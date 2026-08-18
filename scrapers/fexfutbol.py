@@ -21,10 +21,7 @@ HEADERS = {
     )
 }
 
-# Procesamos al menos las 5 primeras páginas.
 MIN_PAGES = 5
-
-# Límite de seguridad.
 MAX_PAGES = 50
 
 
@@ -46,14 +43,10 @@ def construir_url_pagina(pagina):
 
 
 def es_futbol_playa(titulo):
-    """
-    Determina si una noticia pertenece a fútbol playa
-    utilizando únicamente el título.
-    """
+    """Determina si una noticia pertenece a fútbol playa."""
 
     titulo = " ".join(titulo.split()).lower()
 
-    # Normalizamos diferentes tipos de guion.
     titulo = titulo.replace("-", " ")
     titulo = titulo.replace("–", " ")
     titulo = titulo.replace("—", " ")
@@ -71,10 +64,32 @@ def es_futbol_playa(titulo):
     )
 
 
+def convertir_fecha(fecha):
+    """
+    Convierte DD/MM/YYYY a YYYY-MM-DD para que main.py
+    pueda ordenar correctamente las noticias.
+    """
+
+    match = re.match(
+        r"^(\d{2})/(\d{2})/(\d{4})$",
+        fecha
+    )
+
+    if not match:
+        return fecha
+
+    dia, mes, año = match.groups()
+
+    return f"{año}-{mes}-{dia}"
+
+
 def extraer_noticias(html):
     """Extrae las noticias de una página de FEXFUTBOL."""
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
 
     noticias = []
 
@@ -109,11 +124,12 @@ def extraer_noticias(html):
         # Fecha
         # -------------------------------------------------
 
-        fecha = ""
+        fecha_original = ""
 
         span = bloque.find("span")
 
         if span:
+
             texto_span = span.get_text(
                 " ",
                 strip=True
@@ -125,7 +141,35 @@ def extraer_noticias(html):
             )
 
             if match:
-                fecha = match.group(0)
+                fecha_original = match.group(0)
+
+        fecha = convertir_fecha(
+            fecha_original
+        )
+
+        # -------------------------------------------------
+        # Imagen
+        # -------------------------------------------------
+
+        imagen = ""
+
+        img = bloque.select_one(
+            "img"
+        )
+
+        if img:
+
+            src = (
+                img.get("src")
+                or img.get("data-src")
+                or ""
+            )
+
+            if src:
+                imagen = urljoin(
+                    BASE_URL,
+                    src
+                )
 
         # -------------------------------------------------
         # Resumen
@@ -146,6 +190,7 @@ def extraer_noticias(html):
             "url": url,
             "date": fecha,
             "summary": resumen,
+            "image": imagen,
             "source": "FEXFútbol"
         })
 
@@ -296,6 +341,15 @@ def scrape():
             noticia
         )
 
+    # -----------------------------------------------------
+    # Ordenar las noticias de FEXFútbol
+    # -----------------------------------------------------
+
+    noticias_unicas.sort(
+        key=lambda noticia: noticia.get("date") or "",
+        reverse=True
+    )
+
     print(
         f"FEXFútbol: "
         f"{len(noticias_unicas)} noticias de "
@@ -304,10 +358,6 @@ def scrape():
 
     return noticias_unicas
 
-
-# ---------------------------------------------------------
-# Ejecución directa del scraper
-# ---------------------------------------------------------
 
 if __name__ == "__main__":
 
