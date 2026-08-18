@@ -59,12 +59,15 @@ def scrape():
 
         url = enlace["href"]
 
+        # Convertir URL relativa en absoluta
         if url.startswith("/"):
             url = BASE_URL + url
 
+        # Solo enlaces de noticias
         if not url.startswith(BASE_URL + "/es/noticias/"):
             continue
 
+        # Evitar duplicados
         if url in urls_vistas:
             continue
 
@@ -73,19 +76,13 @@ def scrape():
         if not texto:
             continue
 
-        # Buscar el contenedor de la noticia
-        contenedor = enlace
-
-        for _ in range(5):
-            if contenedor.parent:
-                contenedor = contenedor.parent
-
-        texto_contenedor = contenedor.get_text(" ", strip=True)
-
-        partes = texto_contenedor.split()
+        partes = texto.split()
 
         fecha_encontrada = None
+        indice_fecha = None
 
+        # Buscar una fecha del tipo:
+        # 11 Agosto 2026
         for i in range(len(partes) - 2):
 
             if (
@@ -103,15 +100,37 @@ def scrape():
                         mes,
                         dia
                     ).strftime("%Y-%m-%d")
+
+                    indice_fecha = i
+
                 except ValueError:
                     pass
 
                 break
 
+        # Si el propio enlace no contiene fecha,
+        # no es una noticia.
         if not fecha_encontrada:
             continue
 
-        # Imagen
+        # El título está antes de la fecha.
+        texto_antes_fecha = " ".join(
+            partes[:indice_fecha]
+        ).strip()
+
+        if not texto_antes_fecha:
+            continue
+
+        titulo = texto_antes_fecha
+
+        # Buscar el contenedor de la tarjeta para localizar imagen
+        contenedor = enlace
+
+        for _ in range(5):
+            if contenedor.parent:
+                contenedor = contenedor.parent
+
+        # Buscar imagen
         imagen = None
 
         img = contenedor.find("img")
@@ -125,11 +144,6 @@ def scrape():
 
             if imagen and imagen.startswith("/"):
                 imagen = BASE_URL + imagen
-
-        titulo = texto.strip()
-
-        if len(titulo) < 20:
-            continue
 
         urls_vistas.add(url)
 
