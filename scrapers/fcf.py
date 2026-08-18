@@ -1,193 +1,210 @@
 import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, parse_qs, unquote
+from urllib.parse import urljoin
 from datetime import datetime
-import re
 
 
 BASE_URL = "https://www.fcf.cat"
-URL = "https://www.fcf.cat/ca/noticies-fcf"
+
+API_URL = (
+    "https://www.fcf.cat/api/news/list/1"
+    "?page={page}&categories=3000208"
+)
+
+NOTICIA_BASE_URL = "https://www.fcf.cat/ca/noticies-fcf/"
 
 
 def limpiar_texto(texto):
-    return " ".join(texto.split()).strip()
+    if not texto:
+        return ""
+
+    return " ".join(str(texto).split()).strip()
 
 
-def extraer_fecha(texto):
+def convertir_fecha(fecha):
     """
-    Convierte una fecha FCF del tipo:
+    Convierte:
 
-    22/07/2026
+    2026-07-22T09:37:40.000Z
 
     en:
 
     2026-07-22
     """
 
-    texto = limpiar_texto(texto)
-
-    match = re.search(
-        r"\b(\d{2})/(\d{2})/(\d{4})\b",
-        texto
-    )
-
-    if not match:
+    if not fecha:
         return None
-
-    dia, mes, anio = match.groups()
 
     try:
-        fecha = datetime.strptime(
-            f"{dia}/{mes}/{anio}",
-            "%d/%m/%Y"
+        fecha_dt = datetime.fromisoformat(
+            fecha.replace("Z", "+00:00")
         )
 
-        return fecha.strftime("%Y-%m-%d")
+        return fecha_dt.strftime("%Y-%m-%d")
 
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
-def extraer_imagen(img):
+def construir_url_noticia(noticia):
     """
-    Extrae la URL original de la imagen de FCF.
+    La API devuelve NOTICIA_URL con esta estructura:
 
-    La web utiliza Next.js y genera URLs como:
+    alba-arija-.../22/07/2026
 
-    /_next/image?url=https%3A%2F%2Ffiles.fcf.cat%2Fimg%2Fnoticies%2F...png&w=1200&q=75
+    La URL pública es:
 
-    Nos interesa la imagen original de files.fcf.cat.
+    https://www.fcf.cat/ca/noticies-fcf/alba-arija-.../22/07/2026
     """
 
-    if not img:
+    noticia_url = noticia.get("NOTICIA_URL")
+
+    if not noticia_url:
         return None
 
-    # Primero intentamos src
-    src = img.get("src")
+    noticia_url = str(noticia_url).strip()
 
-    if src:
-        parsed = urlparse(src)
+    if noticia_url.startswith("http"):
+        return noticia_url
 
-        if parsed.path == "/_next/image":
-
-            parametros = parse_qs(parsed.query)
-
-            if "url" in parametros:
-                return unquote(parametros["url"][0])
-
-        if src.startswith("http"):
-            return src
-
-    # Fallback a srcset
-    srcset = img.get("srcset")
-
-    if srcset:
-        # Cogemos el último candidato, normalmente el de mayor resolución
-        candidatos = [
-            parte.strip().split(" ")[0]
-            for parte in srcset.split(",")
-            if parte.strip()
-        ]
-
-        if candidatos:
-
-            src = candidatos[-1]
-
-            parsed = urlparse(src)
-
-            if parsed.path == "/_next/image":
-
-                parametros = parse_qs(parsed.query)
-
-                if "url" in parametros:
-                    return unquote(parametros["url"][0])
-
-            return urljoin(BASE_URL, src)
-
-    return None
+    return urljoin(
+        NOTICIA_BASE_URL,
+        noticia_url
+    )
 
 
-def es_noticia_fcf(url):
+def extraer_imagen(noticia):
     """
-    Comprueba que la URL tenga la estructura:
+    La API proporciona IMAGEHOME con la URL original.
 
-    https://www.fcf.cat/ca/noticies-fcf/1036803
+    Ejemplo:
+
+    https://files.fcf.cat/img/noticies/....png
     """
 
-    parsed = urlparse(url)
+    imagen = noticia.get("IMAGEHOME")
 
-    if parsed.netloc not in (
-        "www.fcf.cat",
-        "fcf.cat",
-    ):
-        return False
+    if not imagen:
+        return None
 
-    partes = [
-        parte
-        for parte in parsed.path.strip("/").split("/")
-        if parte
-    ]
+    imagen = str(imagen).strip()
 
-    if len(partes) != 3:
-        return False
+    if not imagen:
+        return None
 
-    if partes[0] != "ca":
-        return False
-
-    if partes[1] != "noticies-fcf":
-        return False
-
-    # El último componente debe ser numérico
-    if not partes[2].isdigit():
-        return False
-
-    return True
+    return imagen
 
 
-def obtener_titulo(tarjeta):
+def convertir_noticia(noticia):
     """
-    El título de las tarjetas FCF está directamente en h3.
+    Convierte una noticia de la API FCF al formato utilizado
+    por el resto del scraper.
     """
 
-    titulo = tarjeta.find("h3")
+    titulo = limpiar_texto(
+        noticia.get("TITULO")
+    )
 
     if not titulo:
         return None
 
-    texto = limpiar_texto(
-        titulo.get_text(" ", strip=True)
+    url = construir_url_noticia(
+        noticia
     )
 
-    return texto or None
+    if not url:
+        return None
+
+    fecha = convertir_fecha(
+        noticia.get("FECHA")
+    )
+
+    if not fecha:
+        return None
+
+    imagen = extraer_imagen(
+        noticia
+    )
+
+    return {
+        "title": titulo,
+        "url": url,
+        "date": fecha,
+        "source": "FCF",
+        "category": "Fútbol playa",
+        "image": imagen,
+    }
 
 
-def obtener_fecha(tarjeta):
+def descargar_pagina(page, headers):
     """
-    Busca la fecha DD/MM/YYYY dentro de la tarjeta.
+    Descarga una página de la API FCF.
+
+    Devuelve:
+
+    - lista de noticias
+    - número total de noticias indicado por la API
     """
 
-    # Primero buscamos spans, que es donde aparece actualmente.
-    for span in tarjeta.find_all("span"):
+    url = API_URL.format(
+        page=page
+    )
 
-        texto = limpiar_texto(
-            span.get_text(" ", strip=True)
+    try:
+
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=30
         )
 
-        fecha = extraer_fecha(texto)
+        response.raise_for_status()
 
-        if fecha:
-            return fecha
+        datos = response.json()
 
-    # Fallback: buscar en todo el texto de la tarjeta.
-    return extraer_fecha(
-        tarjeta.get_text(" ", strip=True)
+    except requests.RequestException as error:
+
+        print(
+            f"FCF: error al descargar página {page}: {error}"
+        )
+
+        return [], None
+
+    except ValueError as error:
+
+        print(
+            f"FCF: respuesta JSON inválida en página {page}: {error}"
+        )
+
+        return [], None
+
+    noticias_api = datos.get(
+        "data",
+        []
     )
 
+    meta = datos.get(
+        "meta",
+        {}
+    )
 
-def obtener_imagen(tarjeta):
-    img = tarjeta.find("img")
+    total = meta.get(
+        "total"
+    )
 
-    return extraer_imagen(img)
+    noticias = []
+
+    for noticia_api in noticias_api:
+
+        noticia = convertir_noticia(
+            noticia_api
+        )
+
+        if noticia:
+            noticias.append(
+                noticia
+            )
+
+    return noticias, total
 
 
 def scrape():
@@ -197,100 +214,104 @@ def scrape():
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/151.0 Safari/537.36"
-        )
+        ),
+        "Accept": "application/json",
+        "Referer": "https://www.fcf.cat/ca/noticies-fcf",
     }
 
-    print(f"FCF: procesando {URL}")
-
-    try:
-
-        response = requests.get(
-            URL,
-            headers=headers,
-            timeout=30
-        )
-
-        response.raise_for_status()
-
-    except requests.RequestException as error:
-
-        print(
-            f"FCF: error al descargar la página: {error}"
-        )
-
-        return []
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser"
+    print(
+        "FCF: procesando API de noticias de fútbol playa"
     )
 
     noticias = []
+
     urls_vistas = set()
 
-    # ---------------------------------------------------------
-    # Las noticias están directamente en enlaces <a>.
-    # ---------------------------------------------------------
+    page = 1
+    total_api = None
 
-    for enlace in soup.find_all(
-        "a",
-        href=True
-    ):
+    while True:
 
-        href = enlace.get("href", "").strip()
-
-        if not href:
-            continue
-
-        url = urljoin(
-            BASE_URL,
-            href
+        print(
+            f"FCF: procesando página {page}"
         )
 
-        if not es_noticia_fcf(url):
-            continue
+        nuevas_noticias, total = descargar_pagina(
+            page,
+            headers
+        )
 
-        if url in urls_vistas:
-            continue
+        # Si es la primera página guardamos el total.
+        if total_api is None and total is not None:
+            total_api = total
+
+            print(
+                f"FCF: la API indica {total_api} noticias"
+            )
+
+        # Si la API no devuelve datos, hemos terminado.
+        if not nuevas_noticias:
+
+            print(
+                f"FCF: página {page} sin noticias. "
+                "Fin de la paginación."
+            )
+
+            break
+
+        nuevas = 0
+
+        for noticia in nuevas_noticias:
+
+            url = noticia.get("url")
+
+            if not url:
+                continue
+
+            if url in urls_vistas:
+                continue
+
+            noticias.append(
+                noticia
+            )
+
+            urls_vistas.add(
+                url
+            )
+
+            nuevas += 1
+
+        print(
+            f"FCF: {nuevas} noticias nuevas en página {page}"
+        )
 
         # -----------------------------------------------------
-        # Título
+        # Si ya hemos alcanzado el total indicado por la API,
+        # no necesitamos seguir haciendo peticiones.
         # -----------------------------------------------------
 
-        titulo = obtener_titulo(enlace)
+        if total_api is not None and len(noticias) >= total_api:
 
-        if not titulo:
-            continue
+            print(
+                "FCF: total de noticias alcanzado."
+            )
 
-        # -----------------------------------------------------
-        # Fecha
-        # -----------------------------------------------------
+            break
 
-        fecha = obtener_fecha(enlace)
-
-        if not fecha:
-            continue
+        page += 1
 
         # -----------------------------------------------------
-        # Imagen
+        # Protección por si la API se comporta mal y empieza
+        # a devolver siempre las mismas páginas.
         # -----------------------------------------------------
 
-        imagen = obtener_imagen(enlace)
+        if page > 1000:
 
-        # -----------------------------------------------------
-        # Guardar
-        # -----------------------------------------------------
+            print(
+                "FCF: límite de seguridad de 1000 páginas alcanzado."
+            )
 
-        noticias.append({
-            "title": titulo,
-            "url": url,
-            "date": fecha,
-            "source": "FCF",
-            "category": "Fútbol playa",
-            "image": imagen,
-        })
-
-        urls_vistas.add(url)
+            break
 
     # ---------------------------------------------------------
     # Ordenar de más reciente a más antigua
@@ -302,7 +323,7 @@ def scrape():
     )
 
     print(
-        f"FCF: {len(noticias)} noticias encontradas"
+        f"FCF: {len(noticias)} noticias encontradas en total"
     )
 
     return noticias
