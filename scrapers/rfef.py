@@ -1,198 +1,276 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import re
 
 
 URL = "https://rfef.es/es/noticias/futbol-playa"
-BASE_URL = "https://rfef.es"
 
 
-# URLs que pertenecen a categorías/secciones y NO son noticias
-EXCLUDED_URLS = {
-    "/es/noticias/futbol-playa",
+MESES = {
+    "enero": "01",
+    "febrero": "02",
+    "marzo": "03",
+    "abril": "04",
+    "mayo": "05",
+    "junio": "06",
+    "julio": "07",
+    "agosto": "08",
+    "septiembre": "09",
+    "octubre": "10",
+    "noviembre": "11",
+    "diciembre": "12",
 }
 
-# Prefijos que corresponden a páginas de categorías/secciones
-EXCLUDED_PREFIXES = (
-    "/es/noticias/futbol-playa/",
-    "/es/noticias/selecciones-de-futbol-playa/",
-)
+
+def limpiar_texto(texto):
+    return " ".join(texto.split()).strip()
 
 
-def is_excluded_url(url):
+def extraer_fecha(texto):
     """
-    Comprueba si una URL pertenece a una categoría o sección
-    en lugar de ser una noticia individual.
+    Busca fechas como:
+    11 Agosto 2026
+    10 Agosto 2026
     """
-    path = url.replace(BASE_URL, "").split("?")[0].split("#")[0]
 
-    if path in EXCLUDED_URLS:
-        return True
+    texto = limpiar_texto(texto).lower()
 
-    if path.startswith(EXCLUDED_PREFIXES):
-        return True
+    patron = (
+        r"\b(\d{1,2})\s+"
+        r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|"
+        r"septiembre|octubre|noviembre|diciembre)\s+"
+        r"(\d{4})\b"
+    )
 
-    return False
+    match = re.search(patron, texto)
+
+    if not match:
+        return None
+
+    dia = int(match.group(1))
+    mes = MESES[match.group(2)]
+    anio = match.group(3)
+
+    return f"{anio}-{mes}-{dia:02d}"
+
+
+def obtener_imagen(contenedor):
+    imagen = contenedor.find("img")
+
+    if not imagen:
+        return None
+
+    src = (
+        imagen.get("src")
+        or imagen.get("data-src")
+        or imagen.get("data-lazy-src")
+    )
+
+    if not src:
+        return None
+
+    return urljoin(URL, src)
+
+
+def obtener_titulo(contenedor):
+    """
+    Obtiene el título real de la noticia.
+    """
+
+    # El título suele estar dentro del enlace principal
+    # de la noticia.
+    enlaces = contenedor.find_all("a", href=True)
+
+    for enlace in enlaces:
+
+        href = enlace.get("href", "")
+
+        if "/es/noticias/" not in href:
+            continue
+
+        texto = limpiar_texto(
+            enlace.get_text(" ", strip=True)
+        )
+
+        if not texto:
+            continue
+
+        # Evitamos enlaces de categorías
+        # que aparecen dentro del bloque de la noticia.
+        if texto.lower() == "fútbol playa":
+            continue
+
+        if texto.lower() == "galería de imágenes en el interior":
+            continue
+
+        return texto
+
+    return None
 
 
 def scrape():
+
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/151.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+            "Chrome/151.0 Safari/537.36"
+        )
     }
 
-    response = requests.get(URL, headers=headers, timeout=30)
+    response = requests.get(
+        URL,
+        headers=headers,
+        timeout=30
+    )
+
     response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser"
+    )
 
     noticias = []
     urls_vistas = set()
 
-    # Buscar enlaces de noticias
-    for link in soup.find_all("a", href=True):
+    # ---------------------------------------------------------
+    # 1. Localizar el bloque de resultados
+    # ---------------------------------------------------------
 
-        href = link.get("href", "").strip()
+    texto_resultados = soup.find(
+        string=re.compile(
+            r"Resultados de Fútbol playa",
+            re.IGNORECASE
+        )
+    )
+
+    if not texto_resultados:
+        print("No se encontró el bloque de resultados de RFEF.")
+        return []
+
+    # Subimos hasta encontrar un contenedor suficientemente
+    # grande que contenga el listado de resultados.
+    contenedor_resultados = texto_resultados.parent
+
+    for _ in range(8):
+
+        if not contenedor_resultados.parent:
+            break
+
+        enlaces = contenedor_resultados.find_all(
+            "a",
+            href=True
+        )
+
+        # El listado de resultados actual contiene bastantes
+        # enlaces, mientras que el nodo inicial no.
+        if len(enlaces) >= 10:
+            break
+
+        contenedor_resultados = contenedor_resultados.parent
+
+    # ---------------------------------------------------------
+    # 2. Buscar noticias SOLO dentro de ese bloque
+    # ---------------------------------------------------------
+
+    enlaces = contenedor_resultados.find_all(
+        "a",
+        href=True
+    )
+
+    for enlace in enlaces:
+
+        href = enlace.get("href", "")
 
         if not href:
             continue
 
-        # Convertir URL relativa en absoluta
-        article_url = urljoin(BASE_URL, href)
+        url = urljoin(URL, href)
 
-        # Solo aceptar URLs de rfef.es
-        if not article_url.startswith(BASE_URL):
+        # Tiene que ser una URL de noticia
+        if "/es/noticias/" not in url:
             continue
 
-        # Limpiar posibles parámetros/anclas
-        article_url = article_url.split("?")[0].split("#")[0]
+        # No queremos categorías que estén dentro del listado
+        # como enlaces secundarios.
+        texto_enlace = limpiar_texto(
+            enlace.get_text(" ", strip=True)
+        )
 
-        # Ignorar categorías y secciones
-        if is_excluded_url(article_url):
+        if texto_enlace.lower() in (
+            "fútbol playa",
+            "galería de imágenes en el interior",
+            "cargar más",
+        ):
+            continue
+
+        # -----------------------------------------------------
+        # 3. Encontrar el contenedor individual de la noticia
+        # -----------------------------------------------------
+
+        tarjeta = enlace
+
+        for _ in range(6):
+
+            if not tarjeta.parent:
+                break
+
+            tarjeta = tarjeta.parent
+
+            texto_tarjeta = limpiar_texto(
+                tarjeta.get_text(" ", strip=True)
+            )
+
+            fecha = extraer_fecha(texto_tarjeta)
+
+            if fecha:
+                break
+        else:
+            fecha = None
+
+        # Si no tiene fecha, no es una noticia.
+        if not fecha:
             continue
 
         # Evitar duplicados
-        if article_url in urls_vistas:
+        if url in urls_vistas:
             continue
 
-        # Las noticias de esta sección están bajo /es/noticias/
-        if not article_url.startswith(BASE_URL + "/es/noticias/"):
+        # -----------------------------------------------------
+        # 4. Título
+        # -----------------------------------------------------
+
+        titulo = obtener_titulo(tarjeta)
+
+        if not titulo:
             continue
 
-        # Texto del enlace
-        title = link.get_text(" ", strip=True)
+        # -----------------------------------------------------
+        # 5. Imagen
+        # -----------------------------------------------------
 
-        if not title:
-            continue
+        imagen = obtener_imagen(tarjeta)
 
-        # Buscar el contenedor de la noticia para obtener fecha e imagen
-        container = (
-            link.find_parent("article")
-            or link.find_parent("div", class_=lambda x: x and "views-row" in x)
-            or link.parent
-        )
-
-        if not container:
-            container = link
-
-        # -------------------------
-        # FECHA
-        # -------------------------
-
-        date = None
-
-        # Buscar elementos típicos de fecha
-        date_element = container.find(
-            ["time", "span", "div"],
-            class_=lambda x: x and any(
-                word in " ".join(x).lower()
-                for word in ["date", "fecha", "published", "created"]
-            )
-        )
-
-        if date_element:
-            date_text = date_element.get("datetime") or date_element.get_text(
-                " ", strip=True
-            )
-
-            # Buscar una fecha YYYY-MM-DD
-            import re
-
-            match = re.search(r"\d{4}-\d{2}-\d{2}", date_text)
-
-            if match:
-                date = match.group(0)
-
-            else:
-                # Fechas tipo "11 Agosto 2026"
-                meses = {
-                    "enero": "01",
-                    "febrero": "02",
-                    "marzo": "03",
-                    "abril": "04",
-                    "mayo": "05",
-                    "junio": "06",
-                    "julio": "07",
-                    "agosto": "08",
-                    "septiembre": "09",
-                    "octubre": "10",
-                    "noviembre": "11",
-                    "diciembre": "12",
-                }
-
-                match = re.search(
-                    r"(\d{1,2})\s+([a-záéíóú]+)\s+(\d{4})",
-                    date_text.lower(),
-                )
-
-                if match:
-                    day = match.group(1).zfill(2)
-                    month = meses.get(match.group(2))
-                    year = match.group(3)
-
-                    if month:
-                        date = f"{year}-{month}-{day}"
-
-        # -------------------------
-        # IMAGEN
-        # -------------------------
-
-        image = None
-
-        img = container.find("img")
-
-        if img:
-            image = (
-                img.get("src")
-                or img.get("data-src")
-                or img.get("data-lazy-src")
-            )
-
-            if image:
-                image = urljoin(BASE_URL, image)
-
-        # -------------------------
-        # CATEGORÍA
-        # -------------------------
-
-        category = "Fútbol playa"
-
-        noticia = {
-            "title": title,
-            "url": article_url,
-            "date": date,
+        noticias.append({
+            "title": titulo,
+            "url": url,
+            "date": fecha,
             "source": "RFEF",
-            "category": category,
-        }
+            "category": "Fútbol playa",
+            "image": imagen,
+        })
 
-        if image:
-            noticia["image"] = image
+        urls_vistas.add(url)
 
-        noticias.append(noticia)
-        urls_vistas.add(article_url)
+    # ---------------------------------------------------------
+    # 6. Ordenar
+    # ---------------------------------------------------------
+
+    noticias.sort(
+        key=lambda noticia: noticia.get("date") or "",
+        reverse=True
+    )
 
     return noticias
