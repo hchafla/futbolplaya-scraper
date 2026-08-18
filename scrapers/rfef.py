@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from urllib.parse import urljoin
 
 
 URL = "https://rfef.es/es/noticias/futbol-playa"
@@ -20,12 +21,9 @@ def scrape():
         ),
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
         "Referer": "https://rfef.es/",
-        "Connection": "keep-alive"
     }
 
-    session = requests.Session()
-
-    response = session.get(
+    response = requests.get(
         URL,
         headers=headers,
         timeout=30
@@ -55,19 +53,46 @@ def scrape():
         "diciembre": 12
     }
 
+    # ---------------------------------------------------------
+    # BUSCAR ENLACES QUE APUNTEN A NOTICIAS REALES
+    # ---------------------------------------------------------
+
     for enlace in soup.find_all("a", href=True):
 
-        url = enlace["href"]
+        href = enlace["href"]
 
-        # Convertir URL relativa en absoluta
-        if url.startswith("/"):
-            url = BASE_URL + url
+        url = urljoin(BASE_URL, href)
 
-        # Solo enlaces de noticias
+        # Solo URLs de noticias
         if not url.startswith(BASE_URL + "/es/noticias/"):
             continue
 
-        # Evitar duplicados
+        # Excluir categorías y secciones conocidas
+        partes_url = url.rstrip("/").split("/")
+
+        if len(partes_url) < 6:
+            continue
+
+        # La URL de una noticia real termina directamente
+        # en el slug. Las categorías tienen estructuras como:
+        #
+        # /es/noticias/futbol-playa/campeonatos-clubes-base-playa
+        # /es/noticias/selecciones-de-futbol-playa/absoluta-masculina-playa
+        #
+        # Excluimos esas rutas de categoría.
+
+        categorias_excluidas = {
+            "futbol-playa",
+            "selecciones-de-futbol-playa",
+            "campeonatos-clubes-base-playa",
+        }
+
+        if any(
+            categoria in partes_url
+            for categoria in categorias_excluidas
+        ):
+            continue
+
         if url in urls_vistas:
             continue
 
@@ -76,29 +101,31 @@ def scrape():
         if not texto:
             continue
 
-        partes = texto.split()
+        # -----------------------------------------------------
+        # BUSCAR FECHA
+        # -----------------------------------------------------
 
-        fecha_encontrada = None
+        palabras = texto.split()
+
+        fecha = None
         indice_fecha = None
 
-        # Buscar una fecha del tipo:
-        # 11 Agosto 2026
-        for i in range(len(partes) - 2):
+        for i in range(len(palabras) - 2):
+
+            dia = palabras[i]
+            mes = palabras[i + 1].lower()
+            año = palabras[i + 2]
 
             if (
-                partes[i].isdigit()
-                and partes[i + 1].lower() in meses
-                and partes[i + 2].isdigit()
+                dia.isdigit()
+                and mes in meses
+                and año.isdigit()
             ):
-                dia = int(partes[i])
-                mes = meses[partes[i + 1].lower()]
-                año = int(partes[i + 2])
-
                 try:
-                    fecha_encontrada = datetime(
-                        año,
-                        mes,
-                        dia
+                    fecha = datetime(
+                        int(año),
+                        meses[mes],
+                        int(dia)
                     ).strftime("%Y-%m-%d")
 
                     indice_fecha = i
@@ -108,29 +135,55 @@ def scrape():
 
                 break
 
-        # Si el propio enlace no contiene fecha,
-        # no es una noticia.
-        if not fecha_encontrada:
+        if not fecha:
             continue
 
-        # El título está antes de la fecha.
-        texto_antes_fecha = " ".join(
-            partes[:indice_fecha]
-        ).strip()
+        # -----------------------------------------------------
+        # BUSCAR EL TÍTULO REAL
+        # -----------------------------------------------------
 
-        if not texto_antes_fecha:
-            continue
+        # El enlace contiene:
+        #
+        # TITULO
+        # ENTRADILLA
+        # FECHA
+        #
+        # En vez de intentar adivinar dónde acaba el título
+        # dentro del enlace, buscamos los elementos de título
+        # del propio bloque de noticia.
 
-        titulo = texto_antes_fecha
-
-        # Buscar el contenedor de la tarjeta para localizar imagen
         contenedor = enlace
 
-        for _ in range(5):
+        for _ in range(6):
             if contenedor.parent:
                 contenedor = contenedor.parent
 
-        # Buscar imagen
+        titulo = None
+
+        # Buscar headings dentro de la tarjeta
+        for tag in contenedor.find_all(
+            ["h1", "h2", "h3", "h4", "h5", "h6"]
+        ):
+            texto_titulo = tag.get_text(" ", strip=True)
+
+            if texto_titulo:
+                titulo = texto_titulo
+                break
+
+        # Si no encontramos heading, usar el texto anterior
+        # a la fecha como fallback.
+        if not titulo:
+            titulo = " ".join(
+                palabras[:indice_fecha]
+            ).strip()
+
+        if not titulo:
+            continue
+
+        # -----------------------------------------------------
+        # IMAGEN
+        # -----------------------------------------------------
+
         imagen = None
 
         img = contenedor.find("img")
@@ -142,15 +195,19 @@ def scrape():
                 or img.get("data-lazy-src")
             )
 
-            if imagen and imagen.startswith("/"):
-                imagen = BASE_URL + imagen
+            if imagen:
+                imagen = urljoin(BASE_URL, imagen)
+
+        # -----------------------------------------------------
+        # GUARDAR
+        # -----------------------------------------------------
 
         urls_vistas.add(url)
 
         noticias.append({
             "title": titulo,
             "url": url,
-            "date": fecha_encontrada,
+            "date": fecha,
             "source": "RFEF",
             "category": "Fútbol playa",
             "image": imagen
