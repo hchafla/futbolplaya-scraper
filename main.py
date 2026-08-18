@@ -36,6 +36,8 @@ print(f"RFEF: {len(noticias_rfef)}")
 noticias_existentes = cargar_noticias_existentes()
 
 # Combinar todo
+# Las noticias existentes se conservan aunque una fuente
+# no las devuelva en la ejecución actual.
 todas_las_noticias = (
     noticias_existentes
     + noticias_beach_soccer_ww
@@ -45,9 +47,10 @@ todas_las_noticias = (
 # Eliminar duplicados por URL
 todas_las_noticias = combinar_noticias(todas_las_noticias)
 
-# Ordenar por fecha, más recientes primero
+# Ordenar por fecha, más recientes primero.
+# Si alguna noticia no tiene fecha, se coloca al final.
 todas_las_noticias.sort(
-    key=lambda noticia: noticia.get("date", ""),
+    key=lambda noticia: noticia.get("date") or "",
     reverse=True
 )
 
