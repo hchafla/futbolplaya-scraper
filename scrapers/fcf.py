@@ -1,35 +1,35 @@
-import requests
-from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from urllib.parse import urljoin
 import re
 
 
 BASE_URL = "https://www.fcf.cat"
-
-# Página que contiene el listado de noticias.
-# No dependemos de una URL de categoría que pueda dar 404.
 URL = "https://www.fcf.cat/ca/noticies-fcf"
 
 CATEGORIA = "F. Platja"
 
 
 def limpiar_texto(texto):
+    if not texto:
+        return ""
+
     return " ".join(texto.split()).strip()
 
 
-def extraer_fecha(texto):
+def convertir_fecha(fecha):
     """
-    Busca fechas del tipo:
+    Convierte:
 
     22/07/2026
-    29/06/2026
+
+    en:
+
+    2026-07-22
     """
 
-    texto = limpiar_texto(texto)
-
-    match = re.search(
-        r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b",
-        texto
+    match = re.match(
+        r"^(\d{1,2})/(\d{1,2})/(\d{4})$",
+        fecha.strip()
     )
 
     if not match:
@@ -42,311 +42,106 @@ def extraer_fecha(texto):
     return f"{anio:04d}-{mes:02d}-{dia:02d}"
 
 
-def obtener_imagen(tarjeta):
-    """
-    Obtiene la imagen principal de una tarjeta FCF.
+def obtener_imagen(card):
+    imagen = card.locator("img").first
 
-    Next.js puede utilizar:
-    - src
-    - srcset
-
-    Preferimos src, que en el HTML proporcionado apunta
-    a la versión de 1200 px.
-    """
-
-    imagen = tarjeta.find("img")
-
-    if not imagen:
+    if imagen.count() == 0:
         return None
 
-    src = imagen.get("src")
+    # Next.js utiliza srcset y src.
+    src = imagen.get_attribute("src")
+
+    if not src:
+        src = imagen.get_attribute("data-src")
 
     if not src:
         return None
 
-    # ---------------------------------------------------------
-    # Las imágenes de Next.js tienen esta estructura:
-    #
-    # /_next/image?url=https%3A%2F%2Ffiles.fcf.cat%2F...
-    #
-    # Intentamos recuperar la URL original para no depender
-    # del proxy de Next.js.
-    # ---------------------------------------------------------
-
-    match = re.search(
-        r"[?&]url=([^&]+)",
-        src
-    )
-
-    if match:
-        from urllib.parse import unquote
-
-        imagen_original = unquote(
-            match.group(1)
-        )
-
-        if imagen_original.startswith("http"):
-            return imagen_original
-
-    return urljoin(
-        BASE_URL,
-        src
-    )
+    return urljoin(BASE_URL, src)
 
 
-def es_url_noticia(url):
-    """
-    Comprueba que la URL tenga la estructura:
-
-    https://www.fcf.cat/ca/noticies-fcf/1036803
-    """
-
-    if not url:
-        return False
-
-    patron = (
-        r"^https://www\.fcf\.cat/"
-        r"ca/noticies-fcf/"
-        r"\d+/?$"
-    )
-
-    return bool(
-        re.match(
-            patron,
-            url
-        )
-    )
-
-
-def encontrar_tarjeta(enlace):
-    """
-    En el HTML proporcionado, cada noticia está estructurada así:
-
-    <a href="/ca/noticies-fcf/1036803">
-        <div class="...">
-            ...
-            <span>22/07/2026</span>
-            ...
-            <h3>...</h3>
-            <p>...</p>
-        </div>
-    </a>
-
-    Por tanto, el propio <a> es el contenedor de la noticia.
-    """
-
-    if enlace.name == "a":
-        return enlace
-
-    return None
-
-
-def obtener_titulo(tarjeta):
-    """
-    Extrae el título desde el <h3> de la tarjeta.
-    """
-
-    titulo = tarjeta.find("h3")
-
-    if not titulo:
-        return None
-
-    texto = limpiar_texto(
-        titulo.get_text(
-            " ",
-            strip=True
-        )
-    )
-
-    return texto or None
-
-
-def obtener_resumen(tarjeta):
-    """
-    Extrae la entradilla/resumen desde el <p> de la tarjeta.
-    """
-
-    titulo = tarjeta.find("h3")
-
-    # El <p> que aparece en las tarjetas está después del h3.
-    if titulo:
-
-        siguiente_p = titulo.find_next("p")
-
-        if siguiente_p:
-
-            texto = limpiar_texto(
-                siguiente_p.get_text(
-                    " ",
-                    strip=True
-                )
-            )
-
-            if texto:
-                return texto
-
-    # Fallback: primer <p> de la tarjeta.
-    for parrafo in tarjeta.find_all("p"):
-
-        texto = limpiar_texto(
-            parrafo.get_text(
-                " ",
-                strip=True
-            )
-        )
-
-        if texto:
-            return texto
-
-    return None
-
-
-def obtener_categoria(tarjeta):
-    """
-    Busca la etiqueta de categoría.
-
-    En el HTML actual aparece como:
-
-    <span ...>F. Platja</span>
-    """
-
-    texto_tarjeta = tarjeta.get_text(
-        " ",
-        strip=True
-    )
-
-    if CATEGORIA.lower() in texto_tarjeta.lower():
-        return CATEGORIA
-
-    return None
-
-
-def obtener_fecha_tarjeta(tarjeta):
-    """
-    Busca la fecha dentro de la tarjeta.
-    """
-
-    texto = tarjeta.get_text(
-        " ",
-        strip=True
-    )
-
-    return extraer_fecha(texto)
-
-
-def scrape():
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/151.0 Safari/537.36"
-        ),
-        "Accept-Language": "ca-ES,ca;q=0.9,es;q=0.8",
-    }
-
-    print(
-        f"FCF: procesando {URL}"
-    )
-
-    response = requests.get(
-        URL,
-        headers=headers,
-        timeout=30
-    )
-
-    response.raise_for_status()
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser"
-    )
-
+def extraer_noticias_de_pagina(page):
     noticias = []
-    urls_vistas = set()
 
-    # ---------------------------------------------------------
-    # BUSCAR ENLACES DE NOTICIAS
-    #
-    # La estructura real de FCF utiliza:
-    #
-    # <a href="/ca/noticies-fcf/1036803">
-    #
-    # No buscamos clases concretas porque Tailwind/Next.js
-    # genera clases que pueden cambiar.
-    # ---------------------------------------------------------
-
-    enlaces = soup.find_all(
-        "a",
-        href=True
+    # Las tarjetas de noticias son enlaces.
+    enlaces = page.locator(
+        'a[href^="/ca/noticies-fcf/"]'
     )
 
-    for enlace in enlaces:
+    total = enlaces.count()
 
-        href = enlace.get(
-            "href",
-            ""
-        ).strip()
+    for i in range(total):
+
+        enlace = enlaces.nth(i)
+
+        href = enlace.get_attribute("href")
 
         if not href:
             continue
 
-        url = urljoin(
-            BASE_URL,
-            href
+        url = urljoin(BASE_URL, href)
+
+        # -------------------------------------------------
+        # Categoría
+        # -------------------------------------------------
+
+        texto_tarjeta = limpiar_texto(
+            enlace.inner_text()
         )
 
-        if not es_url_noticia(url):
+        if CATEGORIA.lower() not in texto_tarjeta.lower():
             continue
 
-        if url in urls_vistas:
+        # -------------------------------------------------
+        # Título
+        # -------------------------------------------------
+
+        titulo_locator = enlace.locator("h3").first
+
+        if titulo_locator.count() == 0:
             continue
 
-        tarjeta = encontrar_tarjeta(
-            enlace
-        )
-
-        if not tarjeta:
-            continue
-
-        # -----------------------------------------------------
-        # FILTRAR POR CATEGORÍA
-        #
-        # La tarjeta lleva explícitamente:
-        #
-        # F. Platja
-        #
-        # Esto evita coger noticias de fútbol, fútbol sala,
-        # etc. que puedan aparecer en el mismo listado.
-        # -----------------------------------------------------
-
-        categoria = obtener_categoria(
-            tarjeta
-        )
-
-        if categoria != CATEGORIA:
-            continue
-
-        titulo = obtener_titulo(
-            tarjeta
+        titulo = limpiar_texto(
+            titulo_locator.inner_text()
         )
 
         if not titulo:
             continue
 
-        fecha = obtener_fecha_tarjeta(
-            tarjeta
-        )
+        # -------------------------------------------------
+        # Fecha
+        # -------------------------------------------------
+
+        # Las tarjetas contienen la fecha en un span.
+        fecha = None
+
+        spans = enlace.locator("span")
+
+        for j in range(spans.count()):
+
+            texto_span = limpiar_texto(
+                spans.nth(j).inner_text()
+            )
+
+            if re.match(
+                r"^\d{1,2}/\d{1,2}/\d{4}$",
+                texto_span
+            ):
+                fecha = convertir_fecha(texto_span)
+                break
 
         if not fecha:
             continue
 
-        resumen = obtener_resumen(
-            tarjeta
-        )
+        # -------------------------------------------------
+        # Imagen
+        # -------------------------------------------------
 
-        imagen = obtener_imagen(
-            tarjeta
-        )
+        imagen = obtener_imagen(enlace)
+
+        # -------------------------------------------------
+        # Guardar
+        # -------------------------------------------------
 
         noticias.append({
             "title": titulo,
@@ -355,26 +150,188 @@ def scrape():
             "source": "FCF",
             "category": "Fútbol playa",
             "image": imagen,
-            "summary": resumen,
         })
 
-        urls_vistas.add(
-            url
+    return noticias
+
+
+def scrape():
+
+    noticias = []
+    urls_vistas = set()
+
+    with sync_playwright() as p:
+
+        browser = p.chromium.launch(
+            headless=True
         )
 
+        page = browser.new_page(
+            viewport={
+                "width": 1440,
+                "height": 1200,
+            },
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/151.0 Safari/537.36"
+            )
+        )
+
+        try:
+
+            print(
+                f"FCF: procesando {URL}"
+            )
+
+            page.goto(
+                URL,
+                wait_until="networkidle",
+                timeout=60000
+            )
+
+            # -------------------------------------------------
+            # Esperamos a que aparezcan las tarjetas.
+            # -------------------------------------------------
+
+            page.wait_for_selector(
+                'a[href^="/ca/noticies-fcf/"]',
+                timeout=30000
+            )
+
+            # -------------------------------------------------
+            # La página carga noticias mediante JS.
+            #
+            # Dejamos que termine cualquier carga inicial.
+            # -------------------------------------------------
+
+            page.wait_for_timeout(2000)
+
+            # -------------------------------------------------
+            # Extraer las noticias visibles.
+            # -------------------------------------------------
+
+            noticias_pagina = extraer_noticias_de_pagina(
+                page
+            )
+
+            for noticia in noticias_pagina:
+
+                url = noticia.get("url")
+
+                if not url:
+                    continue
+
+                if url in urls_vistas:
+                    continue
+
+                urls_vistas.add(url)
+                noticias.append(noticia)
+
+            print(
+                f"FCF: {len(noticias_pagina)} noticias "
+                f"de fútbol playa encontradas"
+            )
+
+            # -------------------------------------------------
+            # Intentar cargar más noticias.
+            #
+            # La web puede utilizar un botón "Cargar más".
+            # Si existe, lo pulsamos mientras siga apareciendo.
+            # -------------------------------------------------
+
+            for _ in range(50):
+
+                botones = page.get_by_text(
+                    "Cargar más",
+                    exact=False
+                )
+
+                if botones.count() == 0:
+                    break
+
+                boton = botones.last
+
+                if not boton.is_visible():
+                    break
+
+                cantidad_antes = page.locator(
+                    'a[href^="/ca/noticies-fcf/"]'
+                ).count()
+
+                try:
+                    boton.click(
+                        timeout=5000
+                    )
+                except Exception:
+                    break
+
+                try:
+                    page.wait_for_function(
+                        """
+                        (cantidadAntes) => {
+                            return document.querySelectorAll(
+                                'a[href^="/ca/noticies-fcf/"]'
+                            ).length > cantidadAntes;
+                        }
+                        """,
+                        arg=cantidad_antes,
+                        timeout=10000
+                    )
+                except Exception:
+                    break
+
+                page.wait_for_timeout(1000)
+
+                nuevas = extraer_noticias_de_pagina(
+                    page
+                )
+
+                nuevas_count = 0
+
+                for noticia in nuevas:
+
+                    url = noticia.get("url")
+
+                    if not url:
+                        continue
+
+                    if url in urls_vistas:
+                        continue
+
+                    urls_vistas.add(url)
+                    noticias.append(noticia)
+                    nuevas_count += 1
+
+                print(
+                    f"FCF: {nuevas_count} noticias nuevas "
+                    f"cargadas"
+                )
+
+                if nuevas_count == 0:
+                    break
+
+        except Exception as error:
+
+            print(
+                f"FCF: error durante el scraping: {error}"
+            )
+
+        finally:
+
+            browser.close()
+
     # ---------------------------------------------------------
-    # ORDENAR DE MÁS RECIENTE A MÁS ANTIGUA
+    # Ordenar de más reciente a más antigua
     # ---------------------------------------------------------
 
     noticias.sort(
-        key=lambda noticia: (
-            noticia.get("date") or ""
-        ),
+        key=lambda noticia: noticia.get("date") or "",
         reverse=True
     )
 
     print(
-        f"FCF: {len(noticias)} noticias encontradas"
+        f"FCF: {len(noticias)} noticias encontradas en total"
     )
 
     return noticias
