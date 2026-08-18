@@ -1,54 +1,5 @@
 [
   {
-    "title": "Fútbol Playa: El Femenino Cáceres regresa a Primera División Femenina",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010733&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "29/06/2026",
-    "summary": "El conjunto extremeño terminó líder del Grupo A, y se medirá por el título al Ciudad de Dos Hermanas con el ascenso ya garantizado.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Arrancan los primeros Campeonatos de Extremadura de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010188&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "29/05/2025",
-    "summary": "Cáceres acogerá el próximo fin de semana los tornes en categoría juvenil masculina y alevín mixto, que reunirán a un total de 22 equipos.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Horarios confirmados para los Campeonatos de Extremadura de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010705&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "26/05/2026",
-    "summary": "Navalmoral de la Mata y Belvís de Monroy acogerán estos torneos los días 7 y 14 de junio.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Escaso premio para los combinados masculinos en los CESA",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010732&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "25/06/2026",
-    "summary": "Undécimo puesto para infantiles y cadetes y noveno para los alevines en los campeonatos de España celebrados en Rota y Chipiona.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Abierto el plazo de inscripción para los Campeonatos de Extremadura",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010597&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "24/04/2026",
-    "summary": "La RFEXF organizará campeonatos regionales en cinco categorías masculinas y femeninas. El plazo de inscripción finalizará el próximo 20 de mayo.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Finalizan los Campeonatos de España de Selecciones",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1009801&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "23/07/2024",
-    "summary": "Un total de seis selecciones extremeñas han participado en los torneos que se disputan de manera consecutiva en Cádiz.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Arbitraje: Extremadura suma una nueva plaza en 1ª División de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010086&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "23/01/2025",
-    "summary": "La RFEF publica los listados oficiales por categorías para la Temporada 24-25, en los que destaca el ascenso del extremeño Ángel Caro Mogío a Primera División.",
-    "source": "FEXFútbol"
-  },
-  {
     "title": "El Puerto de Santa María será la sede del Mundialito de Fútbol Playa",
     "url": "https://rfaf.es/pnfg/NNws_ShwNewDup?codigo=63720&cod_primaria=140&cod_secundaria=5002366",
     "date": "2026-08-12",
@@ -753,6 +704,14 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/cadizfornia_052026-9.jpg.webp?itok=7kaJconQ"
   },
   {
+    "title": "Fútbol Playa: El Femenino Cáceres regresa a Primera División Femenina",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010733&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-06-29",
+    "summary": "El conjunto extremeño terminó líder del Grupo A, y se medirá por el título al Ciudad de Dos Hermanas con el ascenso ya garantizado.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010733_2_portada_ccfem.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "El desenlace de la Segunda División Femenina de Fútbol Playa se decide en Torrox",
     "url": "https://rfef.es/es/noticias/el-desenlace-de-la-segunda-division-femenina-de-futbol-playa-se-decide-en-torrox",
     "date": "2026-06-29",
@@ -887,6 +846,14 @@
     "date": "2026-06-26",
     "source": "FFRM",
     "category": "Fútbol playa"
+  },
+  {
+    "title": "Fútbol Playa: Escaso premio para los combinados masculinos en los CESA",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010732&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-06-25",
+    "summary": "Undécimo puesto para infantiles y cadetes y noveno para los alevines en los campeonatos de España celebrados en Rota y Chipiona.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010732_2_IMG_20260626_WA0064_2.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "La Segunda División Femenina afronta el desenlace de la fase regular",
@@ -1113,6 +1080,14 @@
     "category": "Fútbol playa"
   },
   {
+    "title": "Las Selecciones Sub-17 y Sub-20 femeninas concluyen los CESA de Fútbol Playa en una meritoria sexta plaza",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010725&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-06-18",
+    "summary": "La actividad se retomará a partir del viernes con la participación de los combinados alevín, infantil y cadete masculinos.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010725_2_PORTADA_PLAYAFEM.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "El Viso y Alcaracejos acogen una nueva etapa de la Segunda División Femenina",
     "url": "https://rfef.es/es/noticias/el-viso-y-alcaracejos-acogen-una-nueva-etapa-de-la-segunda-division-femenina",
     "date": "2026-06-17",
@@ -1265,6 +1240,14 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/jar_043515_edited.jpg.webp?itok=zGUacHsB"
   },
   {
+    "title": "Fútbol Playa: Navalmoral y Belvís vibraron con los Campeonatos de Extremadura Masculinos",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010716&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-06-08",
+    "summary": "AD Ciudad de Plasencia, Cantera Puerta Extremadura y Escuela Morala, vencedores en los campeonatos cadete, infantil y alevín.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010716_2_portada_playa01.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "Roses y Torrox completan el primer capítulo de la Segunda División Femenina 2025/26",
     "url": "https://rfef.es/es/noticias/roses-y-torrox-completan-el-primer-capitulo-de-la-segunda-division-femenina-202526",
     "date": "2026-06-07",
@@ -1369,6 +1352,14 @@
     "category": "Fútbol playa"
   },
   {
+    "title": "Navalmoral de la Mata y Belvís de Monroy se convierten en el epicentro del fútbol playa regional",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010714&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-06-04",
+    "summary": "Los días 7 y 14 de junio, ambas localidades ejercerán de anfitrionas en los Campeonatos de Extremadura de Fútbol Playa para clubes.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010714_2_portada_playaEX.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "Málaga acogerá este fin de semana el Torneo Amistad 2026 de Fútbol Playa",
     "url": "https://rfef.es/es/noticias/malaga-acogera-este-fin-de-semana-el-torneo-amistad-2026-de-futbol-playa",
     "date": "2026-06-03",
@@ -1471,6 +1462,14 @@
     "source": "FCF",
     "category": "Fútbol playa",
     "image": "https://files.fcf.cat/img/noticies/21c98186db0819446dbbde8cea446980.png"
+  },
+  {
+    "title": "Horarios confirmados para los Campeonatos de Extremadura de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010705&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-05-26",
+    "summary": "Navalmoral de la Mata y Belvís de Monroy acogerán estos torneos los días 7 y 14 de junio.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010705_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "España conquista El Puerto tras imponerse a Portugal en una inolvidable final",
@@ -1649,6 +1648,14 @@
     "image": "https://files.fcf.cat/img/noticies/312f93160b8bf99e75f441014940005d.png"
   },
   {
+    "title": "Sorteados los Campeonatos de España de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010685&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-05-13",
+    "summary": "Extremadura competirá con un total de 5 combinados en los torneos que tendrán lugar la última semana de junio.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010685_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "La Ciudad del Fútbol acogerá el 13 de mayo los sorteos de las competiciones nacionales de fútbol playa",
     "url": "https://rfef.es/es/noticias/la-ciudad-del-futbol-acogera-el-13-de-mayo-los-sorteos-de-las-competiciones-nacionales-de",
     "date": "2026-05-08",
@@ -1745,6 +1752,14 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/n/3v3a8378.jpg.webp?itok=RTe6bXF7"
   },
   {
+    "title": "Fútbol Playa: Abierto el plazo de inscripción para los Campeonatos de Extremadura",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010597&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-04-24",
+    "summary": "La RFEXF organizará campeonatos regionales en cinco categorías masculinas y femeninas. El plazo de inscripción finalizará el próximo 20 de mayo.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010597_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "España firma otra exhibición en la Eurocopa Sub-20 y se asegura el liderato ante Italia",
     "url": "https://rfef.es/es/noticias/espana-firma-otra-exhibicion-en-la-eurocopa-sub-20-y-se-asegura-el-liderato-ante-italia",
     "date": "2026-04-24",
@@ -1791,6 +1806,14 @@
     "source": "FCF",
     "category": "Fútbol playa",
     "image": "https://files.fcf.cat/img/noticies/10f3e97e87c1328a5e80916677114a1a.png"
+  },
+  {
+    "title": "Nuevo Curso Federativo de Entrenador especialista en Futbol Playa Nacional B",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010583&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2026-04-13",
+    "summary": "El periodo de inscripción permanecerá abierto hasta el 30 de abril.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010583_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "Convocatoria de la Selección Sub-20 para los entrenamientos previos a la U20 BS Cup de Viareggio",
@@ -2425,6 +2448,14 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/20250712_1320510_edited.jpg.webp?itok=FfUVkN-T"
   },
   {
+    "title": "La Selección Extremeña Femenina Sub-17, Subcampeona de España de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010283&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-07-12",
+    "summary": "Las de Ernesto Sánchez cuajaron un brillante torneo, pero no pudieron poner la guinda al caer por 3-5 ante la potente selección murciana en la gran final.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010283_2_portada_s17femplaya.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "La Selecció Catalana sub20 tanca el Campionat d'Espanya de Futbol Platja femení amb victòria i cinquena posició",
     "url": "https://www.fcf.cat/ca/noticies-fcf/la-seleccio-catalana-sub20-tanca-el-campionat-d-espanya-de-futbol-platja-femeni-amb-victoria-i-cinquena-posicio/11/07/2025",
     "date": "2025-07-11",
@@ -2625,6 +2656,14 @@
     "category": "Fútbol playa"
   },
   {
+    "title": "Fútbol Playa: Las selecciones extremeñas completan su participación en los CESA",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010250&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-07-04",
+    "summary": "Del 3 al 12 de julio, los combinados extremeños viajan a Cádiz para disputar sus respectivos Campeonatos de España.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010250_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "Cara i creu de les Seleccions Catalanes Aleví i Cadet per arrencar el Campionat d’Espanya de Seleccions Autonòmiques",
     "url": "https://www.fcf.cat/ca/noticies-fcf/cara-i-creu-de-les-seleccions-catalanes-alevi-i-cadet-per-arrencar-el-campionat-d-espanya-de-seleccions-autonomiques/03/07/2025",
     "date": "2025-07-03",
@@ -2729,12 +2768,28 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/psx_20250629_203522.jpg.webp?itok=gd3UIFQr"
   },
   {
+    "title": "Belvís de Monroy, preparado para los Campeonatos de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010226&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-06-19",
+    "summary": "Presentación Oficial de los Campeonatos de Extremadura de Fútbol Playa Infantil y Cadete Masculinos",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010226_2_portada_belvisplaya.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "Doblet del Roses Platja i títol del Black Wolf Beach Soccer a la Copa Catalunya de futbol platja 2025",
     "url": "https://www.fcf.cat/ca/noticies-fcf/doblet-del-roses-platja-i-titol-del-black-wolf-beach-soccer-a-la-copa-catalunya-de-futbol-platja-2025/17/06/2025",
     "date": "2025-06-17",
     "source": "FCF",
     "category": "Fútbol playa",
     "image": "https://files.fcf.cat/img/noticies/26081fe4752d637b1da6eba19f2a3927.png"
+  },
+  {
+    "title": "Fútbol Playa: Horarios para los Campeonatos de Extremadura Infantil y Cadete",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010222&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-06-16",
+    "summary": "Belvís de Monroy acoge el próximo fin de semana los Campeonatos de Extremadura de Fútbol Playa en categoría infantil y cadete masculina.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010222_2_00100_1000001641_portada_playaFEXF.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "Tercera Euro Winners para Higicontrol Melilla",
@@ -2751,6 +2806,14 @@
     "date": "2025-06-11",
     "source": "FFCM",
     "category": "Fútbol playa"
+  },
+  {
+    "title": "Fútbol Playa: Celebrados los sorteos para los Campeonatos de España",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010223&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-06-11",
+    "summary": "Cinco selecciones extremeñas competirán en los torneos nacionales organizados por la RFEF, los cuales se celebrarán durante todo el mes de julio en Cádiz.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010223_2_PORTADA_PLAYA.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "Celebrado el sorteo de los CESA de Fútbol playa 2024/25",
@@ -2823,6 +2886,14 @@
     "date": "2025-05-30",
     "source": "FFCM",
     "category": "Fútbol playa"
+  },
+  {
+    "title": "Arrancan los primeros Campeonatos de Extremadura de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010188&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-05-29",
+    "summary": "Cáceres acogerá el próximo fin de semana los tornes en categoría juvenil masculina y alevín mixto, que reunirán a un total de 22 equipos.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010188_2_00100_1000001641_portada_playaFEXF.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "El III CESA de Fútbol Playa Adaptado, un éxito total",
@@ -3127,6 +3198,14 @@
     "source": "RFEF",
     "category": "Fútbol playa",
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/playa_2_1600x500_0.jpg.webp?itok=4RxL954n"
+  },
+  {
+    "title": "Arbitraje: Extremadura suma una nueva plaza en 1ª División de Fútbol Playa",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010086&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2025-01-23",
+    "summary": "La RFEF publica los listados oficiales por categorías para la Temporada 24-25, en los que destaca el ascenso del extremeño Ángel Caro Mogío a Primera División.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001010086_2_portada_arbisplaya.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "La Selección inicia el camino hacia el Mundial de Seychelles 2025",
@@ -3633,6 +3712,14 @@
     "image": "https://rfef.es/sites/default/files/styles/noticias_listado/public/n/jar_superfinal23_53016.jpg.webp?itok=Tfg-mTiC"
   },
   {
+    "title": "Fútbol Playa: Finalizan los Campeonatos de España de Selecciones",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1009801&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2024-07-23",
+    "summary": "Un total de seis selecciones extremeñas han participado en los torneos que se disputan de manera consecutiva en Cádiz.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001009801_2_PORTADA_PLAYA24.jpg",
+    "source": "FEXFútbol"
+  },
+  {
     "title": "Islas Baleares en categoría infantil y Andalucía en juveniles, nuevos campeones de España de Fútbol Playa 2023/24",
     "url": "https://rfef.es/es/noticias/islas-baleares-en-categoria-infantil-y-andalucia-en-juveniles-nuevos-campeones-de-espana",
     "date": "2024-07-23",
@@ -4119,6 +4206,14 @@
     "source": "FCF",
     "category": "Fútbol playa",
     "image": "https://files.fcf.cat/img/noticies/b981a880981dcc4d2e3fae4c9a3ee59b.png"
+  },
+  {
+    "title": "Fútbol Playa: Horarios confirmados para los Campeonatos de Extremadura",
+    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1009706&cod_primaria=3000205&cod_secundaria=3000205",
+    "date": "2024-06-17",
+    "summary": "El próximo fin de semana, Cáceres acoge los Campeonatos de Extremadura de Fútbol Playa en categoría Alevín, Infantil, Cadete y Juvenil masculinos. El 12 de julio, turno para los femeninos.",
+    "image": "https://fex.filesnovanet.es/pnfg/pimg/GestorContenidos/00100_0001009706_2_portada_playaFEXF.jpg",
+    "source": "FEXFútbol"
   },
   {
     "title": "El Sogesport Futfem Talents rubrica el seu nom al Campionat de Catalunya Sènior femení de futbol platja",
@@ -10223,82 +10318,5 @@
     "source": "FCF",
     "category": "Fútbol playa",
     "image": "https://files.fcf.cat/img/noticies/playa-280jpg.jpg"
-  },
-  {
-    "title": "Belvís de Monroy, preparado para los Campeonatos de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010226&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "19/06/2025",
-    "summary": "Presentación Oficial de los Campeonatos de Extremadura de Fútbol Playa Infantil y Cadete Masculinos",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Las Selecciones Sub-17 y Sub-20 femeninas concluyen los CESA de Fútbol Playa en una meritoria sexta plaza",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010725&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "18/06/2026",
-    "summary": "La actividad se retomará a partir del viernes con la participación de los combinados alevín, infantil y cadete masculinos.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Horarios confirmados para los Campeonatos de Extremadura",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1009706&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "17/06/2024",
-    "summary": "El próximo fin de semana, Cáceres acoge los Campeonatos de Extremadura de Fútbol Playa en categoría Alevín, Infantil, Cadete y Juvenil masculinos. El 12 de julio, turno para los femeninos.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Horarios para los Campeonatos de Extremadura Infantil y Cadete",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010222&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "16/06/2025",
-    "summary": "Belvís de Monroy acoge el próximo fin de semana los Campeonatos de Extremadura de Fútbol Playa en categoría infantil y cadete masculina.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Sorteados los Campeonatos de España de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010685&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "13/05/2026",
-    "summary": "Extremadura competirá con un total de 5 combinados en los torneos que tendrán lugar la última semana de junio.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Nuevo Curso Federativo de Entrenador especialista en Futbol Playa Nacional B",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010583&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "13/04/2026",
-    "summary": "El periodo de inscripción permanecerá abierto hasta el 30 de abril.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "La Selección Extremeña Femenina Sub-17, Subcampeona de España de Fútbol Playa",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010283&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "12/07/2025",
-    "summary": "Las de Ernesto Sánchez cuajaron un brillante torneo, pero no pudieron poner la guinda al caer por 3-5 ante la potente selección murciana en la gran final.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Celebrados los sorteos para los Campeonatos de España",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010223&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "11/06/2025",
-    "summary": "Cinco selecciones extremeñas competirán en los torneos nacionales organizados por la RFEF, los cuales se celebrarán durante todo el mes de julio en Cádiz.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Navalmoral y Belvís vibraron con los Campeonatos de Extremadura Masculinos",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010716&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "08/06/2026",
-    "summary": "AD Ciudad de Plasencia, Cantera Puerta Extremadura y Escuela Morala, vencedores en los campeonatos cadete, infantil y alevín.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Fútbol Playa: Las selecciones extremeñas completan su participación en los CESA",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010250&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "04/07/2025",
-    "summary": "Del 3 al 12 de julio, los combinados extremeños viajan a Cádiz para disputar sus respectivos Campeonatos de España.",
-    "source": "FEXFútbol"
-  },
-  {
-    "title": "Navalmoral de la Mata y Belvís de Monroy se convierten en el epicentro del fútbol playa regional",
-    "url": "https://www.fexfutbol.com/pnfg/NNws_ShwNewDup?codigo=1010714&cod_primaria=3000205&cod_secundaria=3000205",
-    "date": "04/06/2026",
-    "summary": "Los días 7 y 14 de junio, ambas localidades ejercerán de anfitrionas en los Campeonatos de Extremadura de Fútbol Playa para clubes.",
-    "source": "FEXFútbol"
   }
 ]
