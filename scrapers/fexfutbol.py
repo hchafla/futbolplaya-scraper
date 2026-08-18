@@ -1,9 +1,9 @@
 # fexfutbol.py
 
+import re
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-import re
 
 
 BASE_URL = "https://www.fexfutbol.com"
@@ -21,7 +21,7 @@ HEADERS = {
     )
 }
 
-# Número mínimo de páginas que se procesan.
+# Procesamos al menos las 5 primeras páginas.
 MIN_PAGES = 5
 
 # Límite de seguridad.
@@ -53,21 +53,20 @@ def es_futbol_playa(titulo):
 
     titulo = " ".join(titulo.split()).lower()
 
-    # Normalizamos guiones para detectar:
-    # fútbol playa
-    # fútbol-playa
-    # futbol playa
-    # futbol-playa
+    # Normalizamos diferentes tipos de guion.
     titulo = titulo.replace("-", " ")
+    titulo = titulo.replace("–", " ")
+    titulo = titulo.replace("—", " ")
 
     patrones = [
         r"\bfútbol\s+playa\b",
         r"\bfutbol\s+playa\b",
         r"\bbeach\s+soccer\b",
+        r"\bbeachsoccer\b",
     ]
 
     return any(
-        re.search(patron, titulo, re.IGNORECASE)
+        re.search(patron, titulo)
         for patron in patrones
     )
 
@@ -79,22 +78,19 @@ def extraer_noticias(html):
 
     noticias = []
 
-    # La estructura observada en FEXFUTBOL es:
-    #
-    # <td class="td_not">
-    #   ...
-    #   <a class="titulo_noticia">Título</a>
-    #   <span>fecha</span>
-    #   <p>resumen</p>
-    #
     for bloque in soup.select("td.td_not"):
 
-        enlace = bloque.select_one("a.titulo_noticia")
+        enlace = bloque.select_one(
+            "a.titulo_noticia"
+        )
 
         if not enlace:
             continue
 
-        titulo = enlace.get_text(" ", strip=True)
+        titulo = enlace.get_text(
+            " ",
+            strip=True
+        )
 
         if not titulo:
             continue
@@ -104,15 +100,24 @@ def extraer_noticias(html):
         if not href:
             continue
 
-        url = urljoin(BASE_URL, href)
+        url = urljoin(
+            BASE_URL,
+            href
+        )
 
+        # -------------------------------------------------
         # Fecha
+        # -------------------------------------------------
+
         fecha = ""
 
         span = bloque.find("span")
 
         if span:
-            texto_span = span.get_text(" ", strip=True)
+            texto_span = span.get_text(
+                " ",
+                strip=True
+            )
 
             match = re.search(
                 r"\b\d{2}/\d{2}/\d{4}\b",
@@ -122,19 +127,26 @@ def extraer_noticias(html):
             if match:
                 fecha = match.group(0)
 
+        # -------------------------------------------------
         # Resumen
+        # -------------------------------------------------
+
         resumen = ""
 
         p = bloque.find("p")
 
         if p:
-            resumen = p.get_text(" ", strip=True)
+            resumen = p.get_text(
+                " ",
+                strip=True
+            )
 
         noticias.append({
-            "titulo": titulo,
+            "title": titulo,
             "url": url,
-            "fecha": fecha,
-            "resumen": resumen
+            "date": fecha,
+            "summary": resumen,
+            "source": "FEXFútbol"
         })
 
     return noticias
@@ -151,64 +163,74 @@ def obtener_noticias_pagina(url):
 
     response.raise_for_status()
 
-    return extraer_noticias(response.text)
+    return extraer_noticias(
+        response.text
+    )
 
 
-def obtener_noticias():
+def scrape():
     """
-    Obtiene noticias de fútbol playa de FEXFUTBOL.
+    Obtiene noticias de fútbol playa de FEXFútbol.
 
-    Se procesan como mínimo las 5 primeras páginas.
-    Se continúa hasta que no haya noticias o se alcance
-    MAX_PAGES.
+    Se procesan al menos las 5 primeras páginas.
     """
 
-    print(f"FEXFUTBOL: procesando {START_URL}")
+    print(
+        f"FEXFútbol: procesando {START_URL}"
+    )
 
     noticias_futbol_playa = []
 
-    paginas_vistas = set()
+    urls_vistas = set()
 
-    for pagina in range(1, MAX_PAGES + 1):
+    for pagina in range(
+        1,
+        MAX_PAGES + 1
+    ):
 
-        # Como mínimo procesamos 5 páginas.
-        # Después podemos terminar cuando una página esté vacía.
-        url = construir_url_pagina(pagina)
+        url = construir_url_pagina(
+            pagina
+        )
 
-        if url in paginas_vistas:
+        if url in urls_vistas:
+
             print(
-                f"FEXFUTBOL: URL repetida en página {pagina}, "
-                f"deteniendo"
+                f"FEXFútbol: URL repetida "
+                f"en página {pagina}, deteniendo"
             )
+
             break
 
-        paginas_vistas.add(url)
+        urls_vistas.add(url)
 
         print(
-            f"FEXFUTBOL: procesando página "
+            f"FEXFútbol: procesando página "
             f"{pagina}: {url}"
         )
 
         try:
-            noticias = obtener_noticias_pagina(url)
 
-        except requests.RequestException as e:
-            print(
-                f"FEXFUTBOL: error descargando página "
-                f"{pagina}: {e}"
+            noticias = obtener_noticias_pagina(
+                url
             )
 
-            # Si todavía no hemos llegado a las 5 páginas,
-            # continuamos intentando las siguientes.
+        except requests.RequestException as e:
+
+            print(
+                f"FEXFútbol: error descargando "
+                f"página {pagina}: {e}"
+            )
+
             if pagina < MIN_PAGES:
                 continue
 
             break
 
         except Exception as e:
+
             print(
-                f"FEXFUTBOL: error procesando página "
-                f"{pagina}: {e}"
+                f"FEXFútbol: error procesando "
+                f"página {pagina}: {e}"
             )
 
             if pagina < MIN_PAGES:
@@ -219,11 +241,10 @@ def obtener_noticias():
         if not noticias:
 
             print(
-                f"FEXFUTBOL: no se encontraron noticias "
-                f"en página {pagina}"
+                f"FEXFútbol: no se encontraron "
+                f"noticias en página {pagina}"
             )
 
-            # Las 5 primeras páginas son obligatorias.
             if pagina >= MIN_PAGES:
                 break
 
@@ -233,51 +254,74 @@ def obtener_noticias():
 
         for noticia in noticias:
 
-            if not es_futbol_playa(noticia["titulo"]):
+            if not es_futbol_playa(
+                noticia["title"]
+            ):
                 continue
 
             encontradas_pagina += 1
-            noticias_futbol_playa.append(noticia)
+
+            noticias_futbol_playa.append(
+                noticia
+            )
 
             print(
-                "FEXFUTBOL: fútbol playa -> "
-                f"{noticia['titulo']}"
+                "FEXFútbol: fútbol playa -> "
+                f"{noticia['title']}"
             )
 
         print(
-            f"FEXFUTBOL: {encontradas_pagina} "
-            f"noticias de fútbol playa en página {pagina}"
+            f"FEXFútbol: "
+            f"{encontradas_pagina} noticias de "
+            f"fútbol playa en página {pagina}"
         )
 
-    # Eliminar duplicados por URL.
+    # -----------------------------------------------------
+    # Eliminar duplicados por URL
+    # -----------------------------------------------------
+
     noticias_unicas = []
     urls = set()
 
     for noticia in noticias_futbol_playa:
 
-        if noticia["url"] in urls:
+        url = noticia.get("url")
+
+        if not url or url in urls:
             continue
 
-        urls.add(noticia["url"])
-        noticias_unicas.append(noticia)
+        urls.add(url)
+
+        noticias_unicas.append(
+            noticia
+        )
 
     print(
-        f"FEXFUTBOL: {len(noticias_unicas)} "
-        f"noticias de fútbol playa encontradas en total"
+        f"FEXFútbol: "
+        f"{len(noticias_unicas)} noticias de "
+        f"fútbol playa encontradas en total"
     )
 
     return noticias_unicas
 
 
+# ---------------------------------------------------------
+# Ejecución directa del scraper
+# ---------------------------------------------------------
+
 if __name__ == "__main__":
-    noticias = obtener_noticias()
+
+    noticias = scrape()
 
     print()
-    print("=== NOTICIAS FÚTBOL PLAYA ===")
+    print(
+        "=== NOTICIAS FÚTBOL PLAYA ==="
+    )
 
     for noticia in noticias:
+
         print(
-            f"{noticia['fecha']} | "
-            f"{noticia['titulo']} | "
+            f"{noticia['date']} | "
+            f"{noticia['title']} | "
             f"{noticia['url']}"
         )
