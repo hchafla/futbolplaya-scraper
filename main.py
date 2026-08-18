@@ -3,6 +3,7 @@ import json
 from scrapers.beach_soccer_ww import scrape as scrape_beach_soccer_ww
 from scrapers.rfaf import scrape as scrape_rfaf
 from scrapers.rfef import scrape as scrape_rfef
+from scrapers.fcf import scrape as scrape_fcf
 
 
 def cargar_noticias_existentes():
@@ -37,6 +38,7 @@ def combinar_noticias(noticias):
 noticias_beach_soccer_ww = scrape_beach_soccer_ww()
 noticias_rfaf = scrape_rfaf()
 noticias_rfef = scrape_rfef()
+noticias_fcf = scrape_fcf()
 
 print(
     f"Beach Soccer Worldwide: "
@@ -51,6 +53,11 @@ print(
 print(
     f"RFEF: "
     f"{len(noticias_rfef)}"
+)
+
+print(
+    f"FCF: "
+    f"{len(noticias_fcf)}"
 )
 
 
@@ -70,6 +77,7 @@ todas_las_noticias = (
     + noticias_beach_soccer_ww
     + noticias_rfaf
     + noticias_rfef
+    + noticias_fcf
 )
 
 
