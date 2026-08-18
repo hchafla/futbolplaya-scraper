@@ -8,11 +8,30 @@ BASE_URL = "https://rfef.es"
 
 
 def scrape():
-    response = requests.get(
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;"
+            "q=0.9,image/avif,image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        "Referer": "https://rfef.es/",
+        "Connection": "keep-alive"
+    }
+
+    session = requests.Session()
+
+    response = session.get(
         URL,
-        headers={"User-Agent": "Mozilla/5.0"},
+        headers=headers,
         timeout=30
     )
+
+    print(f"RFEF HTTP status: {response.status_code}")
 
     response.raise_for_status()
 
@@ -40,15 +59,12 @@ def scrape():
 
         url = enlace["href"]
 
-        # Convertir URLs relativas en absolutas
         if url.startswith("/"):
             url = BASE_URL + url
 
-        # Solo queremos enlaces de noticias RFEF
         if not url.startswith(BASE_URL + "/es/noticias/"):
             continue
 
-        # Evitar enlaces duplicados
         if url in urls_vistas:
             continue
 
@@ -57,7 +73,7 @@ def scrape():
         if not texto:
             continue
 
-        # Buscar la tarjeta/contenedor de la noticia
+        # Buscar el contenedor de la noticia
         contenedor = enlace
 
         for _ in range(5):
@@ -68,8 +84,6 @@ def scrape():
 
         partes = texto_contenedor.split()
 
-        # Buscar fecha tipo:
-        # 11 Agosto 2026
         fecha_encontrada = None
 
         for i in range(len(partes) - 2):
@@ -89,7 +103,6 @@ def scrape():
                         mes,
                         dia
                     ).strftime("%Y-%m-%d")
-
                 except ValueError:
                     pass
 
@@ -98,13 +111,12 @@ def scrape():
         if not fecha_encontrada:
             continue
 
-        # Buscar imagen
+        # Imagen
         imagen = None
 
         img = contenedor.find("img")
 
         if img:
-
             imagen = (
                 img.get("src")
                 or img.get("data-src")
@@ -114,10 +126,8 @@ def scrape():
             if imagen and imagen.startswith("/"):
                 imagen = BASE_URL + imagen
 
-        # El texto del propio enlace suele ser el título
         titulo = texto.strip()
 
-        # Evitar títulos que sean elementos de navegación
         if len(titulo) < 20:
             continue
 
