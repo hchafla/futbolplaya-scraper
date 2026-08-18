@@ -5,6 +5,7 @@ from scrapers.rfaf import scrape as scrape_rfaf
 from scrapers.rfef import scrape as scrape_rfef
 from scrapers.fcf import scrape as scrape_fcf
 from scrapers.ffcv import scrape as scrape_ffcv
+from scrapers.ffrm import scrape as scrape_ffrm
 
 
 def cargar_noticias_existentes():
@@ -41,6 +42,7 @@ noticias_rfaf = scrape_rfaf()
 noticias_rfef = scrape_rfef()
 noticias_fcf = scrape_fcf()
 noticias_ffcv = scrape_ffcv()
+noticias_ffrm = scrape_ffrm()
 
 print(
     f"Beach Soccer Worldwide: "
@@ -67,6 +69,11 @@ print(
     f"{len(noticias_ffcv)}"
 )
 
+print(
+    f"FFRM: "
+    f"{len(noticias_ffrm)}"
+)
+
 
 # ---------------------------------------------------------
 # Cargar noticias existentes
@@ -86,6 +93,7 @@ todas_las_noticias = (
     + noticias_rfef
     + noticias_fcf
     + noticias_ffcv
+    + noticias_ffrm
 )
 
 
