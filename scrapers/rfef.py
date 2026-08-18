@@ -184,15 +184,22 @@ def obtener_titulo(tarjeta, url):
     """
     Obtiene el título real de la noticia.
 
-    La RFEF puede incluir dentro de la misma tarjeta:
-    - enlace a la noticia
-    - enlace a la galería
-    - enlace a la categoría
+    La RFEF puede incluir dentro de una misma tarjeta:
+    - enlace al título/noticia
+    - entradilla
+    - fecha
+    - enlace a galería
+    - enlace a categoría
 
-    Por eso no basta con coger el primer <a> o el primer <h>.
+    La prioridad es siempre obtener únicamente el texto que
+    corresponda al titular, sin modificar la lógica que determina
+    qué noticias son válidas.
     """
 
-    candidatos = []
+    # ---------------------------------------------------------
+    # Buscar únicamente el enlace que apunta exactamente a la
+    # noticia que estamos procesando.
+    # ---------------------------------------------------------
 
     for enlace in tarjeta.find_all("a", href=True):
 
@@ -204,6 +211,103 @@ def obtener_titulo(tarjeta, url):
         if enlace_url != url:
             continue
 
+        # -----------------------------------------------------
+        # PRIMERA OPCIÓN:
+        #
+        # Buscar encabezados dentro del enlace.
+        #
+        # Si RFEF utiliza h1/h2/h3/etc. para el título, esta es
+        # la extracción más limpia y segura.
+        # -----------------------------------------------------
+
+        encabezados = enlace.find_all(
+            ["h1", "h2", "h3", "h4", "h5", "h6"]
+        )
+
+        for encabezado in encabezados:
+
+            texto = limpiar_texto(
+                encabezado.get_text(" ", strip=True)
+            )
+
+            if not texto:
+                continue
+
+            if texto.lower() in TEXTOS_NO_TITULO:
+                continue
+
+            return texto
+
+        # -----------------------------------------------------
+        # SEGUNDA OPCIÓN:
+        #
+        # Buscar elementos que tengan una clase relacionada
+        # claramente con el título.
+        #
+        # No dependemos de una clase concreta, porque la RFEF
+        # puede cambiar nombres internos.
+        # -----------------------------------------------------
+
+        elementos_titulo = []
+
+        for elemento in enlace.find_all(
+            ["div", "span", "p"]
+        ):
+
+            clases = elemento.get("class", [])
+
+            if not clases:
+                continue
+
+            clases_texto = " ".join(
+                str(clase).lower()
+                for clase in clases
+            )
+
+            if not any(
+                palabra in clases_texto
+                for palabra in (
+                    "title",
+                    "titulo",
+                    "headline",
+                )
+            ):
+                continue
+
+            texto = limpiar_texto(
+                elemento.get_text(" ", strip=True)
+            )
+
+            if not texto:
+                continue
+
+            if texto.lower() in TEXTOS_NO_TITULO:
+                continue
+
+            elementos_titulo.append(texto)
+
+        if elementos_titulo:
+
+            # Preferimos el candidato más corto, porque los
+            # contenedores superiores pueden incluir también
+            # entradilla y otros textos.
+            elementos_titulo.sort(
+                key=len
+            )
+
+            return elementos_titulo[0]
+
+        # -----------------------------------------------------
+        # TERCERA OPCIÓN:
+        #
+        # El HTML puede no separar el título mediante etiquetas.
+        # En ese caso obtenemos el texto del enlace y eliminamos
+        # únicamente la fecha final.
+        #
+        # NO intentamos cortar por palabras como "El", "La",
+        # "Los", etc., porque eso podría mutilar titulares reales.
+        # -----------------------------------------------------
+
         texto = limpiar_texto(
             enlace.get_text(" ", strip=True)
         )
@@ -211,27 +315,33 @@ def obtener_titulo(tarjeta, url):
         if not texto:
             continue
 
-        texto_lower = texto.lower()
-
-        if texto_lower in TEXTOS_NO_TITULO:
+        if texto.lower() in TEXTOS_NO_TITULO:
             continue
 
-        candidatos.append(texto)
-
-    # Preferimos el texto del enlace que apunta exactamente
-    # a la noticia.
-    if candidatos:
-
-        # Normalmente el título real es el texto más largo.
-        # Esto evita quedarnos con etiquetas secundarias.
-        candidatos.sort(
-            key=len,
-            reverse=True
+        patron_fecha_final = (
+            r"\s+\d{1,2}\s+"
+            r"(?:enero|febrero|marzo|abril|mayo|junio|julio|"
+            r"agosto|septiembre|octubre|noviembre|diciembre)"
+            r"\s+\d{4}\s*$"
         )
 
-        return candidatos[0]
+        texto_sin_fecha = re.sub(
+            patron_fecha_final,
+            "",
+            texto,
+            flags=re.IGNORECASE
+        ).strip()
 
-    # Fallback: buscar encabezados.
+        if texto_sin_fecha:
+            return texto_sin_fecha
+
+    # ---------------------------------------------------------
+    # FALLBACK FINAL:
+    #
+    # Si por algún cambio de HTML no encontramos el enlace
+    # exacto, buscamos un encabezado dentro de la tarjeta.
+    # ---------------------------------------------------------
+
     for etiqueta in tarjeta.find_all(
         ["h1", "h2", "h3", "h4", "h5", "h6"]
     ):
