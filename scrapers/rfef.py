@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 import re
 
 
@@ -73,38 +73,101 @@ def obtener_imagen(contenedor):
     return urljoin(URL, src)
 
 
-def obtener_titulo(contenedor):
+def es_url_noticia(url):
     """
-    Obtiene el título real de la noticia.
+    Determina si una URL tiene estructura de noticia individual.
+
+    Las noticias de RFEF aparecen como:
+        /es/noticias/nombre-de-la-noticia
+
+    Las categorías/secciones suelen tener rutas adicionales:
+        /es/noticias/futbol-sala/...
+        /es/noticias/institucional/...
+        /es/noticias/selecciones-de-futbol-playa/...
     """
 
-    # El título suele estar dentro del enlace principal
-    # de la noticia.
-    enlaces = contenedor.find_all("a", href=True)
+    parsed = urlparse(url)
 
-    for enlace in enlaces:
+    if parsed.netloc != "rfef.es":
+        return False
 
-        href = enlace.get("href", "")
+    partes = [
+        parte
+        for parte in parsed.path.strip("/").split("/")
+        if parte
+    ]
 
-        if "/es/noticias/" not in href:
+    # Debe ser exactamente:
+    # es / noticias / slug
+    if len(partes) != 3:
+        return False
+
+    if partes[0] != "es":
+        return False
+
+    if partes[1] != "noticias":
+        return False
+
+    return True
+
+
+def encontrar_tarjeta(enlace):
+    """
+    Sube por los padres del enlace hasta encontrar el bloque
+    que contiene título, fecha e imagen.
+    """
+
+    actual = enlace
+
+    for _ in range(8):
+
+        if not actual.parent:
+            break
+
+        actual = actual.parent
+
+        texto = limpiar_texto(
+            actual.get_text(" ", strip=True)
+        )
+
+        fecha = extraer_fecha(texto)
+
+        if fecha:
+            return actual, fecha
+
+    return None, None
+
+
+def obtener_titulo(tarjeta, url):
+    """
+    Busca el título dentro de la tarjeta.
+    """
+
+    # Primero intentamos encontrar encabezados.
+    for etiqueta in tarjeta.find_all(
+        ["h1", "h2", "h3", "h4", "h5", "h6"]
+    ):
+        texto = limpiar_texto(
+            etiqueta.get_text(" ", strip=True)
+        )
+
+        if texto:
+            return texto
+
+    # Si no hay encabezado, buscamos el enlace de la propia noticia.
+    for enlace in tarjeta.find_all("a", href=True):
+
+        enlace_url = urljoin(URL, enlace.get("href", ""))
+
+        if enlace_url != url:
             continue
 
         texto = limpiar_texto(
             enlace.get_text(" ", strip=True)
         )
 
-        if not texto:
-            continue
-
-        # Evitamos enlaces de categorías
-        # que aparecen dentro del bloque de la noticia.
-        if texto.lower() == "fútbol playa":
-            continue
-
-        if texto.lower() == "galería de imágenes en el interior":
-            continue
-
-        return texto
+        if texto:
+            return texto
 
     return None
 
@@ -136,119 +199,79 @@ def scrape():
     urls_vistas = set()
 
     # ---------------------------------------------------------
-    # 1. Localizar el bloque de resultados
+    # Buscar enlaces que aparecen en la página de fútbol playa
     # ---------------------------------------------------------
 
-    texto_resultados = soup.find(
-        string=re.compile(
-            r"Resultados de Fútbol playa",
-            re.IGNORECASE
-        )
-    )
+    for enlace in soup.find_all("a", href=True):
 
-    if not texto_resultados:
-        print("No se encontró el bloque de resultados de RFEF.")
-        return []
-
-    # Subimos hasta encontrar un contenedor suficientemente
-    # grande que contenga el listado de resultados.
-    contenedor_resultados = texto_resultados.parent
-
-    for _ in range(8):
-
-        if not contenedor_resultados.parent:
-            break
-
-        enlaces = contenedor_resultados.find_all(
-            "a",
-            href=True
-        )
-
-        # El listado de resultados actual contiene bastantes
-        # enlaces, mientras que el nodo inicial no.
-        if len(enlaces) >= 10:
-            break
-
-        contenedor_resultados = contenedor_resultados.parent
-
-    # ---------------------------------------------------------
-    # 2. Buscar noticias SOLO dentro de ese bloque
-    # ---------------------------------------------------------
-
-    enlaces = contenedor_resultados.find_all(
-        "a",
-        href=True
-    )
-
-    for enlace in enlaces:
-
-        href = enlace.get("href", "")
+        href = enlace.get("href", "").strip()
 
         if not href:
             continue
 
         url = urljoin(URL, href)
 
-        # Tiene que ser una URL de noticia
-        if "/es/noticias/" not in url:
+        # Solo aceptamos URLs de noticias individuales.
+        if not es_url_noticia(url):
             continue
 
-        # No queremos categorías que estén dentro del listado
-        # como enlaces secundarios.
-        texto_enlace = limpiar_texto(
-            enlace.get_text(" ", strip=True)
-        )
-
-        if texto_enlace.lower() in (
-            "fútbol playa",
-            "galería de imágenes en el interior",
-            "cargar más",
-        ):
-            continue
-
-        # -----------------------------------------------------
-        # 3. Encontrar el contenedor individual de la noticia
-        # -----------------------------------------------------
-
-        tarjeta = enlace
-
-        for _ in range(6):
-
-            if not tarjeta.parent:
-                break
-
-            tarjeta = tarjeta.parent
-
-            texto_tarjeta = limpiar_texto(
-                tarjeta.get_text(" ", strip=True)
-            )
-
-            fecha = extraer_fecha(texto_tarjeta)
-
-            if fecha:
-                break
-        else:
-            fecha = None
-
-        # Si no tiene fecha, no es una noticia.
-        if not fecha:
-            continue
-
-        # Evitar duplicados
+        # Evitar duplicados.
         if url in urls_vistas:
             continue
 
         # -----------------------------------------------------
-        # 4. Título
+        # Encontrar tarjeta de la noticia
         # -----------------------------------------------------
 
-        titulo = obtener_titulo(tarjeta)
+        tarjeta, fecha = encontrar_tarjeta(enlace)
+
+        if not tarjeta or not fecha:
+            continue
+
+        # -----------------------------------------------------
+        # Título
+        # -----------------------------------------------------
+
+        titulo = obtener_titulo(tarjeta, url)
 
         if not titulo:
             continue
 
         # -----------------------------------------------------
-        # 5. Imagen
+        # Evitar falsos positivos obvios
+        # -----------------------------------------------------
+
+        titulo_lower = titulo.lower()
+
+        if titulo_lower in (
+            "fútbol playa",
+            "institucional",
+            "presidencia",
+            "juntas directivas",
+            "igualdad",
+            "responsabilidad social y sostenibilidad",
+            "integridad",
+            "protección de la infancia",
+            "área médica",
+            "labor federativa",
+            "competiciones masculinas",
+            "competiciones femeninas",
+            "fútbol sala",
+            "grassroots",
+            "árbitros",
+            "entrenadores",
+            "formación",
+            "selección absoluta",
+            "selecciones masculinas",
+            "selecciones femeninas",
+            "selecciones de fútbol playa",
+            "e-sports",
+            "leyendas",
+        ):
+            continue
+
+        # -----------------------------------------------------
+        # Imagen
         # -----------------------------------------------------
 
         imagen = obtener_imagen(tarjeta)
@@ -265,12 +288,14 @@ def scrape():
         urls_vistas.add(url)
 
     # ---------------------------------------------------------
-    # 6. Ordenar
+    # Ordenar
     # ---------------------------------------------------------
 
     noticias.sort(
         key=lambda noticia: noticia.get("date") or "",
         reverse=True
     )
+
+    print(f"RFEF: {len(noticias)} noticias encontradas")
 
     return noticias
