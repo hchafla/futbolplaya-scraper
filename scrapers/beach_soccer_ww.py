@@ -59,15 +59,19 @@ def scrape():
 
         url = enlace["href"]
 
+        # Convertir URLs relativas en absolutas
         if url.startswith("/"):
             url = BASE_URL + url
 
+        # Solo queremos enlaces de Beach Soccer Worldwide
         if not url.startswith(BASE_URL + "/"):
             continue
 
+        # Excluir páginas que no son noticias
         if any(ruta in url for ruta in rutas_excluidas):
             continue
 
+        # Evitar duplicados
         if url in urls_vistas:
             continue
 
@@ -76,15 +80,15 @@ def scrape():
         if not texto:
             continue
 
-        # Separar el texto en partes
-        partes = texto.split()
-
         # Buscar una fecha del tipo:
         # 6 August 2026
+        partes = texto.split()
+
         fecha_encontrada = None
         indice_fecha = None
 
         for i in range(len(partes) - 2):
+
             if (
                 partes[i].isdigit()
                 and partes[i + 1] in meses
@@ -95,24 +99,51 @@ def scrape():
                 año = int(partes[i + 2])
 
                 try:
-                    fecha_encontrada = datetime(año, mes, dia).strftime("%Y-%m-%d")
+                    fecha_encontrada = datetime(
+                        año, mes, dia
+                    ).strftime("%Y-%m-%d")
+
                     indice_fecha = i
+
                 except ValueError:
                     pass
 
                 break
 
+        # Si no encontramos una fecha, no es una noticia
         if not fecha_encontrada:
             continue
 
-        # Lo que aparece antes de la fecha es la categoría
-        categoria = " ".join(partes[:indice_fecha]).strip()
+        # Texto anterior a la fecha = categoría
+        categoria = " ".join(
+            partes[:indice_fecha]
+        ).strip()
 
-        # Lo que aparece después de la fecha es el título
-        titulo = " ".join(partes[indice_fecha + 3:]).strip()
+        # Texto posterior a la fecha = título
+        titulo = " ".join(
+            partes[indice_fecha + 3:]
+        ).strip()
 
         if not titulo:
             continue
+
+        # Buscar imagen asociada a la noticia
+        imagen = None
+
+        img = enlace.find("img")
+
+        if img:
+
+            # Primero intentamos src
+            imagen = img.get("src")
+
+            # Algunas webs utilizan data-src para lazy loading
+            if not imagen:
+                imagen = img.get("data-src")
+
+            # Convertir URL relativa en absoluta
+            if imagen and imagen.startswith("/"):
+                imagen = BASE_URL + imagen
 
         urls_vistas.add(url)
 
@@ -121,7 +152,8 @@ def scrape():
             "url": url,
             "date": fecha_encontrada,
             "source": "Beach Soccer Worldwide",
-            "category": categoria
+            "category": categoria,
+            "image": imagen
         })
 
     return noticias
