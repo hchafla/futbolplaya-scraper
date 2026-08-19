@@ -1,22 +1,38 @@
 # rffm.py
+#
+# IMPORTANTE: RFFM es una SPA de Next.js que pinta el listado
+# de noticias con JavaScript en el cliente (fetch tras el
+# mount). El HTML que devuelve el servidor a un `requests.get`
+# normal está prácticamente vacío, así que aquí usamos
+# Playwright (Chromium headless) para renderizar la página
+# antes de parsear el HTML resultante con BeautifulSoup.
+#
+# Requisitos:
+#   pip install playwright
+#   playwright install --with-deps chromium
+#
+# En GitHub Actions hay que añadir el paso de instalación del
+# navegador (ver nota al final del archivo).
 
 import re
-import requests
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+
+from bs4 import BeautifulSoup
+from playwright.sync_api import (
+    sync_playwright,
+    TimeoutError as PlaywrightTimeoutError,
+)
 
 
 BASE_URL = "https://www.rffm.es"
 
 START_URL = "https://www.rffm.es/actualidad/federacion?_start=0"
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0 Safari/537.36"
-    )
-}
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0 Safari/537.36"
+)
 
 ITEMS_POR_PAGINA = 12
 MIN_PAGES = 20
@@ -215,18 +231,22 @@ def extraer_noticias(html):
     return noticias
 
 
-def obtener_noticias_pagina(url):
-    """Descarga y procesa una página."""
+def obtener_noticias_pagina(page, url):
+    """
+    Navega a una página con Playwright, espera a que el
+    listado se renderice y devuelve las noticias extraídas
+    del HTML ya renderizado.
+    """
 
-    response = requests.get(
-        url,
-        headers=HEADERS,
-        timeout=30
-    )
+    page.goto(url, wait_until="networkidle", timeout=30000)
 
-    response.raise_for_status()
+    # Esperamos explícitamente a que aparezca al menos una
+    # tarjeta de noticia. Si no aparece en el tiempo dado,
+    # asumimos que esa página no tiene contenido (fin de la
+    # paginación real).
+    page.wait_for_selector("div.noticiacard", timeout=10000)
 
-    return extraer_noticias(response.text)
+    return extraer_noticias(page.content())
 
 
 def scrape():
@@ -238,6 +258,10 @@ def scrape():
     categoría. La paginación usa el parámetro _start (12
     noticias por página). Se recorren al menos MIN_PAGES
     páginas.
+
+    Como el listado se pinta por JavaScript, usamos un
+    navegador Chromium headless (Playwright) en vez de
+    `requests` para obtener el HTML ya renderizado.
     """
 
     print(f"RFFM: procesando {START_URL}")
@@ -247,79 +271,89 @@ def scrape():
 
     paginas_sin_noticias_seguidas = 0
 
-    for pagina in range(1, MAX_PAGES + 1):
+    with sync_playwright() as playwright:
 
-        url = construir_url_pagina(pagina)
+        navegador = playwright.chromium.launch(headless=True)
 
-        print(f"RFFM: procesando página {pagina}: {url}")
+        page = navegador.new_page(user_agent=USER_AGENT)
 
-        try:
-            noticias = obtener_noticias_pagina(url)
+        for pagina in range(1, MAX_PAGES + 1):
 
-        except requests.RequestException as e:
+            url = construir_url_pagina(pagina)
 
-            print(f"RFFM: error descargando página {pagina}: {e}")
+            print(f"RFFM: procesando página {pagina}: {url}")
 
-            if pagina < MIN_PAGES:
+            try:
+                noticias = obtener_noticias_pagina(page, url)
+
+            except PlaywrightTimeoutError:
+
+                print(f"RFFM: no se encontraron noticias en página {pagina}")
+
+                paginas_sin_noticias_seguidas += 1
+
+                if pagina >= MIN_PAGES and paginas_sin_noticias_seguidas >= 2:
+                    break
+
                 continue
 
-            break
+            except Exception as e:
 
-        except Exception as e:
+                print(f"RFFM: error procesando página {pagina}: {e}")
 
-            print(f"RFFM: error procesando página {pagina}: {e}")
+                if pagina < MIN_PAGES:
+                    continue
 
-            if pagina < MIN_PAGES:
-                continue
-
-            break
-
-        if not noticias:
-
-            paginas_sin_noticias_seguidas += 1
-
-            print(f"RFFM: no se encontraron noticias en página {pagina}")
-
-            # Si ya hemos cubierto el mínimo y dos páginas
-            # seguidas vienen vacías, asumimos que se acabó
-            # la paginación real.
-            if pagina >= MIN_PAGES and paginas_sin_noticias_seguidas >= 2:
                 break
 
-            continue
+            if not noticias:
 
-        paginas_sin_noticias_seguidas = 0
+                paginas_sin_noticias_seguidas += 1
 
-        encontradas_pagina = 0
+                print(f"RFFM: no se encontraron noticias en página {pagina}")
 
-        for noticia in noticias:
+                # Si ya hemos cubierto el mínimo y dos páginas
+                # seguidas vienen vacías, asumimos que se acabó
+                # la paginación real.
+                if pagina >= MIN_PAGES and paginas_sin_noticias_seguidas >= 2:
+                    break
 
-            url_noticia = noticia.get("url")
-
-            if not url_noticia or url_noticia in urls_vistas:
                 continue
 
-            es_playa = (
-                es_futbol_playa(noticia["title"])
-                or es_futbol_playa(noticia.get("summary", ""))
-                or es_futbol_playa(noticia.get("category", ""))
+            paginas_sin_noticias_seguidas = 0
+
+            encontradas_pagina = 0
+
+            for noticia in noticias:
+
+                url_noticia = noticia.get("url")
+
+                if not url_noticia or url_noticia in urls_vistas:
+                    continue
+
+                es_playa = (
+                    es_futbol_playa(noticia["title"])
+                    or es_futbol_playa(noticia.get("summary", ""))
+                    or es_futbol_playa(noticia.get("category", ""))
+                )
+
+                if not es_playa:
+                    continue
+
+                urls_vistas.add(url_noticia)
+
+                encontradas_pagina += 1
+
+                noticias_futbol_playa.append(noticia)
+
+                print(f"RFFM: fútbol playa -> {noticia['title']}")
+
+            print(
+                f"RFFM: {encontradas_pagina} noticias de "
+                f"fútbol playa en página {pagina}"
             )
 
-            if not es_playa:
-                continue
-
-            urls_vistas.add(url_noticia)
-
-            encontradas_pagina += 1
-
-            noticias_futbol_playa.append(noticia)
-
-            print(f"RFFM: fútbol playa -> {noticia['title']}")
-
-        print(
-            f"RFFM: {encontradas_pagina} noticias de "
-            f"fútbol playa en página {pagina}"
-        )
+        navegador.close()
 
     # -----------------------------------------------------
     # Ordenar las noticias de RFFM
