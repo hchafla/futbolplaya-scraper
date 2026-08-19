@@ -1,321 +1,354 @@
+# rffm.py
+
 import re
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
+
 BASE_URL = "https://www.rffm.es"
+
+START_URL = "https://www.rffm.es/actualidad/federacion?_start=0"
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 "
-        "(Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 "
-        "(KHTML, like Gecko) "
-        "Chrome/131 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0 Safari/537.36"
+    )
 }
 
+ITEMS_POR_PAGINA = 12
+MIN_PAGES = 20
+MAX_PAGES = 50
 
-NOTICIAS_POR_PAGINA = 12
-MAX_PAGINAS = 20
+
+def limpiar_texto(texto):
+    return " ".join(texto.split()).strip()
+
+
+def construir_url_pagina(pagina):
+    """Construye la URL de una página según el parámetro _start."""
+
+    start = (pagina - 1) * ITEMS_POR_PAGINA
+
+    return f"{BASE_URL}/actualidad/federacion?_start={start}"
 
 
 def es_futbol_playa(texto):
-    """
-    Comprueba si un texto contiene referencias explícitas
-    a fútbol playa.
-    """
+    """Determina si un texto pertenece a fútbol playa."""
 
     if not texto:
         return False
 
-    texto = texto.lower()
+    texto = limpiar_texto(texto).lower()
 
-    # Normalizar diferentes tipos de guion
-    texto = re.sub(r"[-–—]", " ", texto)
+    texto = texto.replace("-", " ")
+    texto = texto.replace("–", " ")
+    texto = texto.replace("—", " ")
 
     patrones = [
         r"\bfútbol\s+playa\b",
         r"\bfutbol\s+playa\b",
         r"\bbeach\s+soccer\b",
+        r"\bbeachsoccer\b",
     ]
 
     return any(
-        re.search(patron, texto, re.IGNORECASE)
+        re.search(patron, texto)
         for patron in patrones
     )
 
 
-def extraer_imagen(enlace):
+def extraer_fecha(texto):
     """
-    Extrae la imagen del background del enlace de la noticia.
+    Convierte una fecha de RFFM del tipo DD/MM/YYYY
+    a YYYY-MM-DD.
     """
-
-    style = enlace.get("style", "")
-
-    patrones = [
-        r'url\(["\']([^"\']+)["\']\)',
-        r"url\(([^)]+)\)",
-    ]
-
-    for patron in patrones:
-
-        match = re.search(
-            patron,
-            style,
-            re.IGNORECASE
-        )
-
-        if match:
-            return match.group(1).strip(
-                "\"'"
-            )
-
-    return ""
-
-
-def extraer_fecha(card):
-    """
-    Busca una fecha DD/MM/YYYY dentro de la tarjeta.
-    """
-
-    texto = card.get_text(
-        " ",
-        strip=True
-    )
 
     match = re.search(
-        r"\b\d{2}/\d{2}/\d{4}\b",
+        r"\b(\d{2})/(\d{2})/(\d{4})\b",
         texto
     )
 
-    if match:
-        return match.group(0)
+    if not match:
+        return None
 
-    return ""
+    dia, mes, anio = match.groups()
+
+    return f"{anio}-{mes}-{dia}"
 
 
-def scrape():
+def obtener_imagen(card):
+    """
+    Obtiene la imagen de la noticia a partir del estilo
+    background: url("...") del primer <a> del card.
+    """
+
+    enlace_imagen = card.find("a", style=True)
+
+    if not enlace_imagen:
+        return None
+
+    style = enlace_imagen.get("style", "")
+
+    match = re.search(r'url\("([^"]+)"\)', style)
+
+    if not match:
+        match = re.search(r"url\('([^']+)'\)", style)
+
+    if not match:
+        return None
+
+    return urljoin(BASE_URL, match.group(1))
+
+
+def obtener_categoria(card):
+    """
+    Obtiene el badge de categoría que RFFM pinta sobre la
+    imagen (ej. "Federación, Fútbol Sala").
+    """
+
+    enlace_imagen = card.find("a", style=True)
+
+    if not enlace_imagen:
+        return ""
+
+    badge = enlace_imagen.find("p")
+
+    if not badge:
+        return ""
+
+    return limpiar_texto(badge.get_text(" ", strip=True))
+
+
+def obtener_resumen(card):
+    """
+    Obtiene el párrafo de resumen de la noticia (el <p> que
+    no está dentro del <h4> del título ni es el badge de
+    categoría).
+    """
+
+    enlace_imagen = card.find("a", style=True)
+    badge = enlace_imagen.find("p") if enlace_imagen else None
+
+    for p in card.find_all("p"):
+
+        if p.find_parent("h4"):
+            continue
+
+        if badge is not None and p is badge:
+            continue
+
+        texto = limpiar_texto(p.get_text(" ", strip=True))
+
+        if texto:
+            return texto
+
+    return None
+
+
+def extraer_noticias(html):
+    """Extrae las noticias de una página de RFFM."""
+
+    soup = BeautifulSoup(html, "html.parser")
 
     noticias = []
 
-    for pagina in range(MAX_PAGINAS):
+    for card in soup.select("div.noticiacard"):
 
-        start = pagina * NOTICIAS_POR_PAGINA
+        enlace = card.find("a", href=True)
 
-        url = (
-            f"{BASE_URL}/actualidad/federacion"
-            f"?_start={start}"
-        )
+        if not enlace:
+            continue
 
-        print(f"RFFM: {url}")
+        href = enlace.get("href")
+
+        if not href or href.startswith("#"):
+            continue
+
+        url = urljoin(BASE_URL, href)
+
+        h4 = card.find("h4")
+
+        if not h4:
+            continue
+
+        titulo = limpiar_texto(h4.get_text(" ", strip=True))
+
+        if not titulo:
+            continue
+
+        # La fecha vive en el div que también contiene el
+        # icono del escudo (MuiBox-root ...).
+        fecha = None
+
+        for div in card.find_all(
+            "div",
+            class_=re.compile(r"\bMuiBox-root\b")
+        ):
+
+            texto_div = div.get_text(" ", strip=True)
+
+            fecha = extraer_fecha(texto_div)
+
+            if fecha:
+                break
+
+        if not fecha:
+            continue
+
+        imagen = obtener_imagen(card)
+        categoria = obtener_categoria(card)
+        resumen = obtener_resumen(card)
+
+        noticias.append({
+            "title": titulo,
+            "url": url,
+            "date": fecha,
+            "summary": resumen or "",
+            "image": imagen,
+            "category": categoria,
+            "source": "RFFM",
+        })
+
+    return noticias
+
+
+def obtener_noticias_pagina(url):
+    """Descarga y procesa una página."""
+
+    response = requests.get(
+        url,
+        headers=HEADERS,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    return extraer_noticias(response.text)
+
+
+def scrape():
+    """
+    Obtiene noticias de fútbol playa de RFFM.
+
+    RFFM mezcla todas las categorías en /actualidad/federacion,
+    así que hace falta filtrar por título, resumen o badge de
+    categoría. La paginación usa el parámetro _start (12
+    noticias por página). Se recorren al menos MIN_PAGES
+    páginas.
+    """
+
+    print(f"RFFM: procesando {START_URL}")
+
+    noticias_futbol_playa = []
+    urls_vistas = set()
+
+    paginas_sin_noticias_seguidas = 0
+
+    for pagina in range(1, MAX_PAGES + 1):
+
+        url = construir_url_pagina(pagina)
+
+        print(f"RFFM: procesando página {pagina}: {url}")
 
         try:
-
-            response = requests.get(
-                url,
-                headers=HEADERS,
-                timeout=30
-            )
-
-            response.raise_for_status()
+            noticias = obtener_noticias_pagina(url)
 
         except requests.RequestException as e:
 
-            print(
-                f"RFFM: error descargando página: {e}"
-            )
+            print(f"RFFM: error descargando página {pagina}: {e}")
+
+            if pagina < MIN_PAGES:
+                continue
 
             break
 
-        soup = BeautifulSoup(
-            response.text,
-            "html.parser"
-        )
+        except Exception as e:
 
-        # --------------------------------------------------
-        # Localizar las noticias
-        #
-        # No dependemos de las clases jssXX/noticiacard.
-        # Buscamos enlaces a /noticias/ que contienen un h4.
-        # --------------------------------------------------
+            print(f"RFFM: error procesando página {pagina}: {e}")
 
-        enlaces_noticias = soup.select(
-            "a[href*='/noticias/']"
-        )
-
-        cards = []
-
-        vistos = set()
-
-        for enlace in enlaces_noticias:
-
-            titulo_element = enlace.select_one("h4")
-
-            if not titulo_element:
+            if pagina < MIN_PAGES:
                 continue
-
-            href = enlace.get("href")
-
-            if not href:
-                continue
-
-            href = urljoin(
-                BASE_URL,
-                href
-            )
-
-            if href in vistos:
-                continue
-
-            vistos.add(href)
-
-            # La tarjeta es el ancestro que contiene el h4,
-            # el resumen y la fecha.
-            card = enlace
-
-            for _ in range(5):
-
-                if card.parent is None:
-                    break
-
-                card = card.parent
-
-                texto_card = card.get_text(
-                    " ",
-                    strip=True
-                )
-
-                if re.search(
-                    r"\d{2}/\d{2}/\d{4}",
-                    texto_card
-                ):
-                    break
-
-            cards.append(
-                (card, enlace)
-            )
-
-        if not cards:
-
-            print(
-                "RFFM: no se encontraron noticias. Fin."
-            )
 
             break
 
-        encontradas = 0
+        if not noticias:
 
-        for card, enlace in cards:
+            paginas_sin_noticias_seguidas += 1
 
-            # --------------------------------------------------
-            # TÍTULO
-            # --------------------------------------------------
+            print(f"RFFM: no se encontraron noticias en página {pagina}")
 
-            titulo_element = enlace.select_one("h4")
+            # Si ya hemos cubierto el mínimo y dos páginas
+            # seguidas vienen vacías, asumimos que se acabó
+            # la paginación real.
+            if pagina >= MIN_PAGES and paginas_sin_noticias_seguidas >= 2:
+                break
 
-            if not titulo_element:
+            continue
+
+        paginas_sin_noticias_seguidas = 0
+
+        encontradas_pagina = 0
+
+        for noticia in noticias:
+
+            url_noticia = noticia.get("url")
+
+            if not url_noticia or url_noticia in urls_vistas:
                 continue
 
-            titulo = titulo_element.get_text(
-                " ",
-                strip=True
+            es_playa = (
+                es_futbol_playa(noticia["title"])
+                or es_futbol_playa(noticia.get("summary", ""))
+                or es_futbol_playa(noticia.get("category", ""))
             )
 
-            if not titulo:
+            if not es_playa:
                 continue
 
-            # --------------------------------------------------
-            # RESUMEN
-            # --------------------------------------------------
+            urls_vistas.add(url_noticia)
 
-            resumen = ""
+            encontradas_pagina += 1
 
-            # El resumen en el HTML real está dentro de .jss19
-            # y es un <p> posterior al bloque del título.
-            contenedor = enlace.parent
+            noticias_futbol_playa.append(noticia)
 
-            for _ in range(4):
-
-                if contenedor is None:
-                    break
-
-                resumen_element = contenedor.select_one(
-                    "div.jss19 > p"
-                )
-
-                if resumen_element:
-
-                    resumen = resumen_element.get_text(
-                        " ",
-                        strip=True
-                    )
-
-                    break
-
-                contenedor = contenedor.parent
-
-            # --------------------------------------------------
-            # FILTRO FÚTBOL PLAYA
-            # --------------------------------------------------
-
-            texto = f"{titulo} {resumen}"
-
-            if not es_futbol_playa(texto):
-                continue
-
-            # --------------------------------------------------
-            # URL
-            # --------------------------------------------------
-
-            noticia_url = urljoin(
-                BASE_URL,
-                enlace.get("href")
-            )
-
-            # --------------------------------------------------
-            # IMAGEN
-            # --------------------------------------------------
-
-            imagen = extraer_imagen(
-                enlace
-            )
-
-            # --------------------------------------------------
-            # FECHA
-            # --------------------------------------------------
-
-            fecha = extraer_fecha(
-                card
-            )
-
-            # --------------------------------------------------
-            # GUARDAR
-            # --------------------------------------------------
-
-            noticias.append({
-                "title": titulo,
-                "url": noticia_url,
-                "date": fecha,
-                "summary": resumen,
-                "image": imagen,
-                "source": "RFFM"
-            })
-
-            encontradas += 1
-
-            print(
-                f"  ✓ {titulo}"
-            )
+            print(f"RFFM: fútbol playa -> {noticia['title']}")
 
         print(
-            f"RFFM: {encontradas} noticias "
-            f"de fútbol playa"
+            f"RFFM: {encontradas_pagina} noticias de "
+            f"fútbol playa en página {pagina}"
         )
 
-    return noticias
+    # -----------------------------------------------------
+    # Ordenar las noticias de RFFM
+    # -----------------------------------------------------
+
+    noticias_futbol_playa.sort(
+        key=lambda noticia: noticia.get("date") or "",
+        reverse=True
+    )
+
+    print(
+        f"RFFM: {len(noticias_futbol_playa)} noticias de "
+        f"fútbol playa encontradas en total"
+    )
+
+    return noticias_futbol_playa
+
+
+if __name__ == "__main__":
+
+    noticias = scrape()
+
+    print()
+    print("=== NOTICIAS FÚTBOL PLAYA (RFFM) ===")
+
+    for noticia in noticias:
+
+        print(
+            f"{noticia['date']} | "
+            f"{noticia['title']} | "
+            f"{noticia['url']}"
+        )
