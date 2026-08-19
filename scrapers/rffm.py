@@ -16,11 +16,15 @@ HEADERS = {
 }
 
 NOTICIAS_POR_PAGINA = 12
-MAX_PAGINAS = 50
+MAX_PAGINAS = 10
 
 
 def es_futbol_playa(texto):
-    texto = texto.lower().replace("-", " ")
+    if not texto:
+        return False
+
+    texto = texto.lower()
+    texto = texto.replace("-", " ")
 
     patrones = [
         r"\bfútbol\s+playa\b",
@@ -49,7 +53,6 @@ def scrape():
         print(f"RFFM: {url}")
 
         try:
-
             r = requests.get(
                 url,
                 headers=HEADERS,
@@ -59,7 +62,7 @@ def scrape():
             r.raise_for_status()
 
         except Exception as e:
-            print(e)
+            print(f"Error: {e}")
             break
 
         soup = BeautifulSoup(r.text, "html.parser")
@@ -67,65 +70,94 @@ def scrape():
         cards = soup.select("div.noticiacard")
 
         if not cards:
+            print("No se encontraron noticias. Fin.")
             break
 
         encontradas = 0
 
         for card in cards:
 
+            # URL
             a = card.select_one("a[href*='/noticias/']")
 
             if not a:
                 continue
 
-            titulo = card.select_one("h4 p")
+            href = a.get("href")
 
-            if not titulo:
+            if not href:
                 continue
 
-            titulo = titulo.get_text(" ", strip=True)
+            noticia_url = urljoin(BASE_URL, href)
 
+            # Título
+            titulo_element = card.select_one("h4")
+
+            if not titulo_element:
+                continue
+
+            titulo = titulo_element.get_text(
+                " ",
+                strip=True
+            )
+
+            # Resumen
             resumen = ""
 
-            ps = card.select("div.jss19 > p")
+            resumen_element = card.select_one(
+                "div.jss19 > p"
+            )
 
-            if ps:
-                resumen = ps[-1].get_text(" ", strip=True)
+            if resumen_element:
+                resumen = resumen_element.get_text(
+                    " ",
+                    strip=True
+                )
 
+            # Buscar fútbol playa en título + resumen
             texto = f"{titulo} {resumen}"
 
             if not es_futbol_playa(texto):
                 continue
 
-            href = a["href"]
-
+            # Imagen
             imagen = ""
 
             style = a.get("style", "")
 
-            m = re.search(r'url\("([^"]+)"\)', style)
-
-            if not m:
-                m = re.search(r"url\((.*?)\)", style)
+            m = re.search(
+                r'url\(["\']?(.*?)["\']?\)',
+                style
+            )
 
             if m:
-                imagen = m.group(1).strip('"')
+                imagen = m.group(1).strip()
 
+            # Fecha
             fecha = ""
 
-            cajas = card.select("div.MuiBox-root")
+            fecha_element = card.select_one(
+                "div.MuiBox-root"
+            )
 
-            for caja in cajas:
+            if fecha_element:
 
-                txt = caja.get_text(" ", strip=True)
+                texto_fecha = fecha_element.get_text(
+                    " ",
+                    strip=True
+                )
 
-                if re.match(r"\d{2}/\d{2}/\d{4}", txt):
-                    fecha = txt
-                    break
+                m = re.search(
+                    r"\d{2}/\d{2}/\d{4}",
+                    texto_fecha
+                )
+
+                if m:
+                    fecha = m.group(0)
 
             noticias.append({
                 "title": titulo,
-                "url": urljoin(BASE_URL, href),
+                "url": noticia_url,
                 "date": fecha,
                 "summary": resumen,
                 "image": imagen,
@@ -136,6 +168,8 @@ def scrape():
 
             print(f"  ✓ {titulo}")
 
-        print(f"RFFM: {encontradas} noticias de fútbol playa")
+        print(
+            f"RFFM: {encontradas} noticias de fútbol playa"
+        )
 
     return noticias
