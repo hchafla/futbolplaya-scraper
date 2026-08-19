@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 NOTICIAS_POR_PAGINA = 12
-MAX_PAGINAS = 10
+MAX_PAGINAS = 20
 
 
 def es_futbol_playa(texto):
