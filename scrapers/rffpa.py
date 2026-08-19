@@ -185,10 +185,10 @@ def extraer_noticias(html):
     return noticias
 
 
-def obtener_noticias_pagina(url):
-    """Descarga y procesa una página."""
+def obtener_noticias_pagina(sesion, url):
+    """Descarga y procesa una página usando una sesión persistente."""
 
-    response = requests.get(
+    response = sesion.get(
         url,
         headers=HEADERS,
         timeout=30
@@ -206,7 +206,11 @@ def scrape():
 
     La web mezcla todas las categorías en "Noticias Generales",
     así que hace falta filtrar por título o resumen. Se
-    recorren como máximo MAX_PAGINAS páginas.
+    recorren como máximo MAX_PAGINAS páginas, en orden
+    estrictamente secuencial y manteniendo una sesión (cookies)
+    entre peticiones, porque la paginación de esta federación
+    parece depender de estado de sesión y no solo de los
+    parámetros de la URL.
     """
 
     print(f"RFFPA: procesando {START_URL}")
@@ -214,58 +218,62 @@ def scrape():
     noticias_futbol_playa = []
     urls_vistas = set()
 
-    for pagina in range(1, MAX_PAGINAS + 1):
+    with requests.Session() as sesion:
 
-        url = construir_url_pagina(pagina)
+        for pagina in range(1, MAX_PAGINAS + 1):
 
-        print(f"RFFPA: procesando página {pagina}: {url}")
+            url = construir_url_pagina(pagina)
 
-        try:
-            noticias = obtener_noticias_pagina(url)
+            print(f"RFFPA: procesando página {pagina}: {url}")
 
-        except requests.RequestException as e:
+            try:
+                noticias = obtener_noticias_pagina(sesion, url)
 
-            print(f"RFFPA: error descargando página {pagina}: {e}")
-            continue
+            except requests.RequestException as e:
 
-        except Exception as e:
-
-            print(f"RFFPA: error procesando página {pagina}: {e}")
-            continue
-
-        if not noticias:
-            print(f"RFFPA: no se encontraron noticias en página {pagina}")
-            continue
-
-        encontradas_pagina = 0
-
-        for noticia in noticias:
-
-            url_noticia = noticia.get("url")
-
-            if not url_noticia or url_noticia in urls_vistas:
+                print(f"RFFPA: error descargando página {pagina}: {e}")
                 continue
 
-            es_playa = (
-                es_futbol_playa(noticia["title"])
-                or es_futbol_playa(noticia.get("summary", ""))
+            except Exception as e:
+
+                print(f"RFFPA: error procesando página {pagina}: {e}")
+                continue
+
+            if not noticias:
+                print(f"RFFPA: no se encontraron noticias en página {pagina}")
+                continue
+
+            print(f"RFFPA: {len(noticias)} noticias en bruto en página {pagina}")
+
+            encontradas_pagina = 0
+
+            for noticia in noticias:
+
+                url_noticia = noticia.get("url")
+
+                if not url_noticia or url_noticia in urls_vistas:
+                    continue
+
+                es_playa = (
+                    es_futbol_playa(noticia["title"])
+                    or es_futbol_playa(noticia.get("summary", ""))
+                )
+
+                if not es_playa:
+                    continue
+
+                urls_vistas.add(url_noticia)
+
+                encontradas_pagina += 1
+
+                noticias_futbol_playa.append(noticia)
+
+                print(f"RFFPA: fútbol playa -> {noticia['title']}")
+
+            print(
+                f"RFFPA: {encontradas_pagina} noticias de "
+                f"fútbol playa en página {pagina}"
             )
-
-            if not es_playa:
-                continue
-
-            urls_vistas.add(url_noticia)
-
-            encontradas_pagina += 1
-
-            noticias_futbol_playa.append(noticia)
-
-            print(f"RFFPA: fútbol playa -> {noticia['title']}")
-
-        print(
-            f"RFFPA: {encontradas_pagina} noticias de "
-            f"fútbol playa en página {pagina}"
-        )
 
     # -----------------------------------------------------
     # Ordenar las noticias de RFFPA
