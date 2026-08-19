@@ -12,19 +12,32 @@ HEADERS = {
         "AppleWebKit/537.36 "
         "(KHTML, like Gecko) "
         "Chrome/131 Safari/537.36"
-    )
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 }
+
 
 NOTICIAS_POR_PAGINA = 12
 MAX_PAGINAS = 20
 
 
 def es_futbol_playa(texto):
+    """
+    Comprueba si un texto contiene referencias explícitas
+    a fútbol playa.
+    """
+
     if not texto:
         return False
 
     texto = texto.lower()
-    texto = texto.replace("-", " ")
+
+    # Normalizar diferentes tipos de guion
+    texto = re.sub(r"[-–—]", " ", texto)
 
     patrones = [
         r"\bfútbol\s+playa\b",
@@ -33,9 +46,58 @@ def es_futbol_playa(texto):
     ]
 
     return any(
-        re.search(p, texto, re.IGNORECASE)
-        for p in patrones
+        re.search(patron, texto, re.IGNORECASE)
+        for patron in patrones
     )
+
+
+def extraer_imagen(enlace):
+    """
+    Extrae la imagen del background del enlace de la noticia.
+    """
+
+    style = enlace.get("style", "")
+
+    patrones = [
+        r'url\(["\']([^"\']+)["\']\)',
+        r"url\(([^)]+)\)",
+    ]
+
+    for patron in patrones:
+
+        match = re.search(
+            patron,
+            style,
+            re.IGNORECASE
+        )
+
+        if match:
+            return match.group(1).strip(
+                "\"'"
+            )
+
+    return ""
+
+
+def extraer_fecha(card):
+    """
+    Busca una fecha DD/MM/YYYY dentro de la tarjeta.
+    """
+
+    texto = card.get_text(
+        " ",
+        strip=True
+    )
+
+    match = re.search(
+        r"\b\d{2}/\d{2}/\d{4}\b",
+        texto
+    )
+
+    if match:
+        return match.group(0)
+
+    return ""
 
 
 def scrape():
@@ -47,51 +109,115 @@ def scrape():
         start = pagina * NOTICIAS_POR_PAGINA
 
         url = (
-            f"{BASE_URL}/actualidad/federacion?_start={start}"
+            f"{BASE_URL}/actualidad/federacion"
+            f"?_start={start}"
         )
 
         print(f"RFFM: {url}")
 
         try:
-            r = requests.get(
+
+            response = requests.get(
                 url,
                 headers=HEADERS,
                 timeout=30
             )
 
-            r.raise_for_status()
+            response.raise_for_status()
 
-        except Exception as e:
-            print(f"Error: {e}")
+        except requests.RequestException as e:
+
+            print(
+                f"RFFM: error descargando página: {e}"
+            )
+
             break
 
-        soup = BeautifulSoup(r.text, "html.parser")
+        soup = BeautifulSoup(
+            response.text,
+            "html.parser"
+        )
 
-        cards = soup.select("div.noticiacard")
+        # --------------------------------------------------
+        # Localizar las noticias
+        #
+        # No dependemos de las clases jssXX/noticiacard.
+        # Buscamos enlaces a /noticias/ que contienen un h4.
+        # --------------------------------------------------
 
-        if not cards:
-            print("No se encontraron noticias. Fin.")
-            break
+        enlaces_noticias = soup.select(
+            "a[href*='/noticias/']"
+        )
 
-        encontradas = 0
+        cards = []
 
-        for card in cards:
+        vistos = set()
 
-            # URL
-            a = card.select_one("a[href*='/noticias/']")
+        for enlace in enlaces_noticias:
 
-            if not a:
+            titulo_element = enlace.select_one("h4")
+
+            if not titulo_element:
                 continue
 
-            href = a.get("href")
+            href = enlace.get("href")
 
             if not href:
                 continue
 
-            noticia_url = urljoin(BASE_URL, href)
+            href = urljoin(
+                BASE_URL,
+                href
+            )
 
-            # Título
-            titulo_element = card.select_one("h4")
+            if href in vistos:
+                continue
+
+            vistos.add(href)
+
+            # La tarjeta es el ancestro que contiene el h4,
+            # el resumen y la fecha.
+            card = enlace
+
+            for _ in range(5):
+
+                if card.parent is None:
+                    break
+
+                card = card.parent
+
+                texto_card = card.get_text(
+                    " ",
+                    strip=True
+                )
+
+                if re.search(
+                    r"\d{2}/\d{2}/\d{4}",
+                    texto_card
+                ):
+                    break
+
+            cards.append(
+                (card, enlace)
+            )
+
+        if not cards:
+
+            print(
+                "RFFM: no se encontraron noticias. Fin."
+            )
+
+            break
+
+        encontradas = 0
+
+        for card, enlace in cards:
+
+            # --------------------------------------------------
+            # TÍTULO
+            # --------------------------------------------------
+
+            titulo_element = enlace.select_one("h4")
 
             if not titulo_element:
                 continue
@@ -101,59 +227,76 @@ def scrape():
                 strip=True
             )
 
-            # Resumen
+            if not titulo:
+                continue
+
+            # --------------------------------------------------
+            # RESUMEN
+            # --------------------------------------------------
+
             resumen = ""
 
-            resumen_element = card.select_one(
-                "div.jss19 > p"
-            )
+            # El resumen en el HTML real está dentro de .jss19
+            # y es un <p> posterior al bloque del título.
+            contenedor = enlace.parent
 
-            if resumen_element:
-                resumen = resumen_element.get_text(
-                    " ",
-                    strip=True
+            for _ in range(4):
+
+                if contenedor is None:
+                    break
+
+                resumen_element = contenedor.select_one(
+                    "div.jss19 > p"
                 )
 
-            # Buscar fútbol playa en título + resumen
+                if resumen_element:
+
+                    resumen = resumen_element.get_text(
+                        " ",
+                        strip=True
+                    )
+
+                    break
+
+                contenedor = contenedor.parent
+
+            # --------------------------------------------------
+            # FILTRO FÚTBOL PLAYA
+            # --------------------------------------------------
+
             texto = f"{titulo} {resumen}"
 
             if not es_futbol_playa(texto):
                 continue
 
-            # Imagen
-            imagen = ""
+            # --------------------------------------------------
+            # URL
+            # --------------------------------------------------
 
-            style = a.get("style", "")
-
-            m = re.search(
-                r'url\(["\']?(.*?)["\']?\)',
-                style
+            noticia_url = urljoin(
+                BASE_URL,
+                enlace.get("href")
             )
 
-            if m:
-                imagen = m.group(1).strip()
+            # --------------------------------------------------
+            # IMAGEN
+            # --------------------------------------------------
 
-            # Fecha
-            fecha = ""
-
-            fecha_element = card.select_one(
-                "div.MuiBox-root"
+            imagen = extraer_imagen(
+                enlace
             )
 
-            if fecha_element:
+            # --------------------------------------------------
+            # FECHA
+            # --------------------------------------------------
 
-                texto_fecha = fecha_element.get_text(
-                    " ",
-                    strip=True
-                )
+            fecha = extraer_fecha(
+                card
+            )
 
-                m = re.search(
-                    r"\d{2}/\d{2}/\d{4}",
-                    texto_fecha
-                )
-
-                if m:
-                    fecha = m.group(0)
+            # --------------------------------------------------
+            # GUARDAR
+            # --------------------------------------------------
 
             noticias.append({
                 "title": titulo,
@@ -166,10 +309,13 @@ def scrape():
 
             encontradas += 1
 
-            print(f"  ✓ {titulo}")
+            print(
+                f"  ✓ {titulo}"
+            )
 
         print(
-            f"RFFM: {encontradas} noticias de fútbol playa"
+            f"RFFM: {encontradas} noticias "
+            f"de fútbol playa"
         )
 
     return noticias
