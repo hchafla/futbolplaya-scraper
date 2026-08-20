@@ -10,6 +10,12 @@ from scrapers.ffcm import scrape as scrape_ffcm
 from scrapers.fexfutbol import scrape as scrape_fexfutbol
 from scrapers.rffm import scrape as scrape_rffm
 from scrapers.fnf import scrape as scrape_fnf
+from scrapers.rffpa import scrape as scrape_rffpa
+from scrapers.rfgf import scrape as scrape_rfgf
+from scrapers.rfmf import scrape as scrape_rfmf
+from scrapers.ffib import scrape as scrape_ffib
+from scrapers.fiflp import scrape as scrape_fiflp
+from scrapers.ftf import scrape as scrape_ftf
 
 
 def cargar_noticias_existentes():
@@ -51,6 +57,12 @@ noticias_ffcm = scrape_ffcm()
 noticias_fexfutbol = scrape_fexfutbol()
 noticias_rffm = scrape_rffm()
 noticias_fnf = scrape_fnf()
+noticias_rffpa = scrape_rffpa()
+noticias_rfgf = scrape_rfgf()
+noticias_rfmf = scrape_rfmf()
+noticias_ffib = scrape_ffib()
+noticias_fiflp = scrape_fiflp()
+noticias_ftf = scrape_ftf()
 
 print(
     f"Beach Soccer Worldwide: "
@@ -102,6 +114,36 @@ print(
     f"{len(noticias_fnf)}"
 )
 
+print(
+    f"RFFPA: "
+    f"{len(noticias_rffpa)}"
+)
+
+print(
+    f"RFGF: "
+    f"{len(noticias_rfgf)}"
+)
+
+print(
+    f"RFMF: "
+    f"{len(noticias_rfmf)}"
+)
+
+print(
+    f"FFIB: "
+    f"{len(noticias_ffib)}"
+)
+
+print(
+    f"FIFLP: "
+    f"{len(noticias_fiflp)}"
+)
+
+print(
+    f"FTF: "
+    f"{len(noticias_ftf)}"
+)
+
 
 # ---------------------------------------------------------
 # Cargar noticias existentes
@@ -126,6 +168,12 @@ todas_las_noticias = (
     + noticias_fexfutbol
     + noticias_rffm
     + noticias_fnf
+    + noticias_rffpa
+    + noticias_rfgf
+    + noticias_rfmf
+    + noticias_ffib
+    + noticias_fiflp
+    + noticias_ftf
 )
 
 
