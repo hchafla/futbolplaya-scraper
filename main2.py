@@ -17,6 +17,8 @@ from scrapers.rffpa import scrape as scrape_rffpa
 from scrapers.rfgf import scrape as scrape_rfgf
 from scrapers.rfmf import scrape as scrape_rfmf
 from scrapers.ffib import scrape as scrape_ffib
+from scrapers.fiflp import scrape as scrape_fiflp
+from scrapers.ftf import scrape as scrape_ftf
 
 
 SCRAPERS_EN_PRUEBA = {
@@ -24,6 +26,8 @@ SCRAPERS_EN_PRUEBA = {
     "RFGF": scrape_rfgf,
     "RFMF": scrape_rfmf,
     "FFIB": scrape_ffib,
+    "FIFLP": scrape_fiflp,
+    "FTF": scrape_ftf,
 }
 
 
