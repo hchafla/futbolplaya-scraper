@@ -15,11 +15,13 @@ import json
 
 from scrapers.rffpa import scrape as scrape_rffpa
 from scrapers.rfgf import scrape as scrape_rfgf
+from scrapers.rfmf import scrape as scrape_rfmf
 
 
 SCRAPERS_EN_PRUEBA = {
     "RFFPA": scrape_rffpa,
     "RFGF": scrape_rfgf,
+    "RFMF": scrape_rfmf,
 }
 
 
