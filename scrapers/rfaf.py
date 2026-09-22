@@ -8,7 +8,12 @@ BASE_URL = "https://rfaf.es"
 
 URL = (
     "https://rfaf.es/pnfg/NNws_LstNews"
-    "?cod_primaria=140&cod_secundaria=5002366"
+    "?cod_primaria=140"
+    "&buscar="
+    "&cod_secundaria=5002366"
+    "&NPcd_PageAnt=0"
+    "&NPcd_PageNext=1"
+    "&NPcd_Page=1"
 )
 
 
@@ -143,40 +148,70 @@ def extraer_noticias_pagina(soup):
 
 def obtener_siguiente_pagina(soup, pagina_actual):
     """
-    Intenta localizar un enlace de paginación para la siguiente página.
+    Obtiene la siguiente página de resultados de RFAF.
 
-    Si RFAF no muestra paginación o cambia su estructura,
-    devuelve None y el scraper termina normalmente.
+    RFAF utiliza enlaces JavaScript del tipo:
+
+        javascript:elegirPag(2);
+
+    Pero la URL real de la página siguiente tiene esta estructura:
+
+        ?cod_primaria=140
+        &buscar=
+        &cod_secundaria=5002366
+        &NPcd_PageAnt=0
+        &NPcd_PageNext=2
+        &NPcd_Page=2
     """
 
-    # Buscar enlaces cuyo texto indique siguiente página.
-    textos_siguiente = {
-        "siguiente",
-        "siguiente >",
-        ">",
-        "next",
-        "next page",
-    }
+    siguiente_pagina = pagina_actual + 1
 
     for enlace in soup.find_all("a", href=True):
 
-        texto = limpiar_texto(
-            enlace.get_text(" ", strip=True)
-        ).lower()
+        href = limpiar_texto(
+            enlace.get("href", "")
+        )
 
-        if texto in textos_siguiente:
-            return urljoin(
-                BASE_URL,
-                enlace.get("href")
-            )
+        # Detectar:
+        # javascript:elegirPag(2);
+        match = re.search(
+            r"elegirPag\s*\(\s*(\d+)\s*\)",
+            href,
+            re.IGNORECASE
+        )
 
-    # Algunas versiones de la web utilizan parámetros
-    # numéricos en la paginación. Si no encontramos un
-    # enlace explícito, no inventamos la URL.
+        if not match:
+            continue
+
+        pagina_enlace = int(match.group(1))
+
+        # Solo aceptamos exactamente la página siguiente.
+        if pagina_enlace != siguiente_pagina:
+            continue
+
+        print(
+            f"RFAF: paginación JavaScript detectada. "
+            f"Siguiente página: {pagina_enlace}"
+        )
+
+        # RFAF utiliza la página anterior en NPcd_PageAnt.
+        pagina_anterior = pagina_actual - 1
+
+        return (
+            f"{BASE_URL}/pnfg/NNws_LstNews"
+            f"?cod_primaria=140"
+            f"&buscar="
+            f"&cod_secundaria=5002366"
+            f"&NPcd_PageAnt={pagina_anterior}"
+            f"&NPcd_PageNext={pagina_enlace}"
+            f"&NPcd_Page={pagina_enlace}"
+        )
+
     return None
 
 
 def scrape():
+
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -199,6 +234,7 @@ def scrape():
         )
 
         try:
+
             response = requests.get(
                 url_actual,
                 headers=headers,
@@ -208,9 +244,11 @@ def scrape():
             response.raise_for_status()
 
         except requests.RequestException as error:
+
             print(
                 f"RFAF: error al descargar la página: {error}"
             )
+
             break
 
         soup = BeautifulSoup(
@@ -235,7 +273,9 @@ def scrape():
                 continue
 
             urls_vistas.add(url)
+
             noticias.append(noticia)
+
             nuevas += 1
 
         print(
@@ -246,6 +286,12 @@ def scrape():
         # Si la página no contiene noticias nuevas,
         # evitamos continuar indefinidamente.
         if nuevas == 0:
+
+            print(
+                "RFAF: no hay noticias nuevas. "
+                "Finalizando paginación."
+            )
+
             break
 
         siguiente = obtener_siguiente_pagina(
@@ -253,7 +299,21 @@ def scrape():
             pagina
         )
 
-        if not siguiente or siguiente == url_actual:
+        if not siguiente:
+
+            print(
+                "RFAF: no se encontró una página siguiente."
+            )
+
+            break
+
+        if siguiente == url_actual:
+
+            print(
+                "RFAF: la siguiente página coincide "
+                "con la actual. Finalizando."
+            )
+
             break
 
         url_actual = siguiente
@@ -261,9 +321,11 @@ def scrape():
 
         # Medida de seguridad.
         if pagina > 50:
+
             print(
                 "RFAF: límite de 50 páginas alcanzado."
             )
+
             break
 
     # Ordenar de más reciente a más antigua.
